@@ -1,0 +1,20 @@
+{
+  "name": "x-dev-assistants",
+  "version": "1.0.0",
+  "description": "Monorepo for dev assistants",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "clean": "turbo clean"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.26.2",
+  "devDependencies": {
+    "turbo": "^2.7.2"
+  }
+}

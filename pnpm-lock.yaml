@@ -1,0 +1,38 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      turbo:
+        specifier: ^2.7.2
+        version: 2.7.2
+
+packages:
+
+  turbo-darwin-arm64@2.7.2:
+    resolution: {integrity: sha1-LL433J6rjjBtBXn7ydXHOGa6nd0=, tarball: http://registry.m.jd.com/turbo-darwin-arm64/download/turbo-darwin-arm64-2.7.2.tgz}
+
+  turbo-linux-64@2.7.2:
+    resolution: {integrity: sha1-bpXjsnnBKynPR/EncuLeQxI/E88=, tarball: http://registry.m.jd.com/turbo-linux-64/download/turbo-linux-64-2.7.2.tgz}
+
+  turbo@2.7.2:
+    resolution: {integrity: sha1-20C5kthSTL5Hb6yi+UMG+96s8ig=, tarball: http://registry.m.jd.com/turbo/download/turbo-2.7.2.tgz}
+    hasBin: true
+
+snapshots:
+
+  turbo-darwin-arm64@2.7.2:
+    optional: true
+
+  turbo-linux-64@2.7.2:
+    optional: true
+
+  turbo@2.7.2:
+    optionalDependencies:
+      turbo-darwin-arm64: 2.7.2
+      turbo-linux-64: 2.7.2
