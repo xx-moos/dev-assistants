@@ -205,8 +205,11 @@ const CaseItem = ({ item }) => (
     </div>
     {item.preview && <div style={styles.preview}>{item.preview}</div>}
     <details>
-      <summary>查看请求 / 响应详情</summary>
-      <pre style={styles.pre}>{JSON.stringify(item, null, 2)}</pre>
+      <summary>请求过程</summary>
+      <summary>请求</summary>
+      <pre style={styles.pre}>{JSON.stringify(item.request, null, 2)}</pre>
+      <summary>响应</summary>
+      <pre style={styles.pre}>{JSON.stringify(item.response, null, 2)}</pre>
     </details>
   </div>
 );
@@ -532,49 +535,30 @@ const App = () => {
         ],
       };
       const startedAt = dayjs();
-      const result = await axios.post(
-        state.baseUrl + "/messages",
-        {
-          // 尝试不同的模型名称
-          model,
-          max_tokens: 1024,
-          messages: [{ role: "user", content: '你好，请回复"连接成功"' }],
+      const result = await requestApi({
+        path: "/messages",
+        data: requestBody,
+        headers: {
+          "anthropic-dangerous-direct-browser-access": "true",
+          "x-stainless-runtime": "browser:chrome",
+          "Content-Type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "x-api-key": state.token,
         },
-        {
-          headers: {
-            "anthropic-dangerous-direct-browser-access": "true",
-            "Content-Type": "application/json",
-            "anthropic-version": "2023-06-01",
-            // 只使用一种认证方式
-            "x-api-key": state.token,
-          },
-        },
-      );
+      });
 
-      // const result = await requestApi({
-      //   path: "/chat/completions",
-      //   data: requestBody,
-      // });
+      const hasFunctionCall = result.status == 200;
 
-      console.log(`result ->:`, result);
-
-      // const output = Array.isArray(result.data?.output)
-      //   ? result.data.output
-      //   : [];
-      // const hasFunctionCall = output.some(
-      //   (item) => item?.type === "function_call",
-      // );
-
-      // return {
-      //   status: hasFunctionCall ? "成功" : "失败",
-      //   durationMs: dayjs().diff(startedAt),
-      //   request: requestBody,
-      //   response: result.data,
-      //   preview: hasFunctionCall
-      //     ? "检测到 Responses API function_call，CLI 工具接口可用。"
-      //     : `调用成功但未检测到 function_call。输出：${extractResponseText(result.data) || "(空)"}`,
-      //   extra: { hasFunctionCall },
-      // };
+      return {
+        status: hasFunctionCall ? "成功" : "失败",
+        durationMs: dayjs().diff(startedAt),
+        request: requestBody,
+        response: result.data,
+        preview: hasFunctionCall
+          ? "检测到 Responses API function_call，CLI 工具接口可用。"
+          : `调用成功但未检测到 function_call。输出：${extractResponseText(result.data) || "(空)"}`,
+        extra: { hasFunctionCall },
+      };
     },
   }));
 
