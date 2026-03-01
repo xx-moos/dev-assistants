@@ -12,7 +12,7 @@ const TIME_FORMAT = "YYYY-MM-DD HH:mm:ss";
 
 // 默认配置
 const DEFAULT_CONFIG = {
-  baseUrl: "https://api.openai.com/v1",
+  baseUrl: "",
   textPrompt: "你好",
   imageUrl:
     "https://gips1.baidu.com/it/u=1746086795,2510875842&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024",
@@ -25,7 +25,10 @@ const TEST_TYPES = [
   { key: "image", label: "图像理解" },
   { key: "toolCall", label: "工具调用" },
   { key: "cliApi", label: "CLI 接口" },
+  { key: "claudeCode", label: "Claude Code" },
 ];
+
+const DEFAULT_TYPE = [];
 
 // 工具函数
 const toApiRoot = (input) => {
@@ -245,7 +248,7 @@ const App = () => {
     models: [],
     selectedModels: [],
     manualModelsText: "",
-    selectedTestTypes: TEST_TYPES.map((item) => item.key),
+    selectedTestTypes: DEFAULT_TYPE,
     loadingModels: false,
     running: false,
     logs: [],
@@ -310,13 +313,14 @@ const App = () => {
 
   // 统一API请求方法
   const requestApi = useMemoizedFn(
-    async ({ path, method = "POST", data, params }) => {
+    async ({ path, method = "POST", data, params, headers }) => {
       try {
         const response = await apiClient.request({
           url: path,
           method,
           data,
           params,
+          headers,
         });
         return { status: response.status, data: response.data };
       } catch (error) {
@@ -515,6 +519,63 @@ const App = () => {
         extra: { hasFunctionCall },
       };
     },
+
+    claudeCode: async (model) => {
+      const requestBody = {
+        model,
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: '你好，这是一个连接测试，请回复"连接成功"',
+          },
+        ],
+      };
+      const startedAt = dayjs();
+      const result = await axios.post(
+        state.baseUrl + "/messages",
+        {
+          // 尝试不同的模型名称
+          model,
+          max_tokens: 1024,
+          messages: [{ role: "user", content: '你好，请回复"连接成功"' }],
+        },
+        {
+          headers: {
+            "anthropic-dangerous-direct-browser-access": "true",
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01",
+            // 只使用一种认证方式
+            "x-api-key": state.token,
+          },
+        },
+      );
+
+      // const result = await requestApi({
+      //   path: "/chat/completions",
+      //   data: requestBody,
+      // });
+
+      console.log(`result ->:`, result);
+
+      // const output = Array.isArray(result.data?.output)
+      //   ? result.data.output
+      //   : [];
+      // const hasFunctionCall = output.some(
+      //   (item) => item?.type === "function_call",
+      // );
+
+      // return {
+      //   status: hasFunctionCall ? "成功" : "失败",
+      //   durationMs: dayjs().diff(startedAt),
+      //   request: requestBody,
+      //   response: result.data,
+      //   preview: hasFunctionCall
+      //     ? "检测到 Responses API function_call，CLI 工具接口可用。"
+      //     : `调用成功但未检测到 function_call。输出：${extractResponseText(result.data) || "(空)"}`,
+      //   extra: { hasFunctionCall },
+      // };
+    },
   }));
 
   // 执行单个测试用例
@@ -678,7 +739,7 @@ const App = () => {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>OpenAI 模型测试面板</h1>
+      <h1 style={styles.title}>模型测试</h1>
 
       <section style={styles.card}>
         <h2 style={styles.subtitle}>连接配置</h2>
