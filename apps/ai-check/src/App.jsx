@@ -25,9 +25,9 @@ const TEST_TYPES = [
   { key: "image", label: "图像理解" },
   { key: "toolCall", label: "工具调用" },
   { key: "cliApi", label: "CLI 接口" },
-  { key: "codex", label: "Codex CLI 能力" },
 ];
 
+// 工具函数
 const toApiRoot = (input) => {
   const cleaned = (input || "").trim().replace(/\/+$/, "");
   if (!cleaned) return DEFAULT_CONFIG.baseUrl;
@@ -35,7 +35,8 @@ const toApiRoot = (input) => {
 };
 
 const formatNow = () => dayjs().format(TIME_FORMAT);
-const generateId = () => `${dayjs().valueOf()}-${Math.random().toString(36).slice(2, 8)}`;
+const generateId = () =>
+  `${dayjs().valueOf()}-${Math.random().toString(36).slice(2, 8)}`;
 
 const maskToken = (token) => {
   const value = (token || "").trim();
@@ -55,7 +56,8 @@ const extractChatText = (data) => {
 };
 
 const extractResponseText = (data) => {
-  if (typeof data?.output_text === "string" && data.output_text) return data.output_text;
+  if (typeof data?.output_text === "string" && data.output_text)
+    return data.output_text;
   if (!Array.isArray(data?.output)) return "";
   return data.output
     .flatMap((item) => item?.content || [])
@@ -82,13 +84,23 @@ const normalizeAxiosError = (error) => {
     payload?.message ||
     error?.message ||
     (status ? `HTTP ${status}` : "请求失败");
-
   const wrapped = new Error(message);
   wrapped.status = status;
   wrapped.payload = payload;
   return wrapped;
 };
 
+// 状态样式映射
+const getStatusStyle = (status) => {
+  const styleMap = {
+    成功: styles.statusSuccess,
+    失败: styles.statusFail,
+    部分失败: styles.statusWarn,
+  };
+  return styleMap[status] || styles.statusRunning;
+};
+
+// 子组件：配置输入字段
 const ConfigField = ({
   label,
   value,
@@ -110,6 +122,7 @@ const ConfigField = ({
   </label>
 );
 
+// 子组件：操作按钮
 const ActionButton = ({ onClick, disabled, children, primary = false }) => (
   <button
     style={{
@@ -124,12 +137,10 @@ const ActionButton = ({ onClick, disabled, children, primary = false }) => (
   </button>
 );
 
+// 子组件：可复制标签
 const CopyChip = ({ label, value, onCopy, strong = false }) => (
   <button
-    style={{
-      ...styles.copyChip,
-      ...(strong ? styles.copyChipStrong : null),
-    }}
+    style={{ ...styles.copyChip, ...(strong ? styles.copyChipStrong : null) }}
     onClick={() => onCopy(value, label)}
     title={`点击复制${label}`}
     type="button"
@@ -139,9 +150,12 @@ const CopyChip = ({ label, value, onCopy, strong = false }) => (
   </button>
 );
 
+// 子组件：模型选择器
 const ModelSelector = ({ models, selectedModels, onToggle, disabled }) => (
   <div style={styles.modelList}>
-    {models.length === 0 && <div style={styles.empty}>暂无模型，请先拉取。</div>}
+    {models.length === 0 && (
+      <div style={styles.empty}>暂无模型，请先拉取。</div>
+    )}
     {models.map((model) => (
       <label key={model} style={styles.modelItem}>
         <input
@@ -156,6 +170,7 @@ const ModelSelector = ({ models, selectedModels, onToggle, disabled }) => (
   </div>
 );
 
+// 子组件：测试类型选择器
 const TestTypeSelector = ({ selectedTestTypes, onToggle, disabled }) => (
   <div style={styles.modelList}>
     {TEST_TYPES.map((item) => (
@@ -172,55 +187,54 @@ const TestTypeSelector = ({ selectedTestTypes, onToggle, disabled }) => (
   </div>
 );
 
-const ModelLogCard = ({ log, onCopy }) => {
-  const statusStyle =
-    log.status === "成功"
-      ? styles.statusSuccess
-      : log.status === "失败"
-        ? styles.statusFail
-        : log.status === "部分失败"
-          ? styles.statusWarn
-          : styles.statusRunning;
+// 子组件：单个测试用例
+const CaseItem = ({ item }) => (
+  <div style={styles.caseItem}>
+    <div style={styles.caseMeta}>
+      <strong>{item.testType}</strong>
+      <span
+        style={item.status === "成功" ? styles.textSuccess : styles.textFail}
+      >
+        {item.status}
+      </span>
+      <span>{item.startedAt}</span>
+      <span>{item.durationMs}ms</span>
+    </div>
+    {item.preview && <div style={styles.preview}>{item.preview}</div>}
+    <details>
+      <summary>查看请求 / 响应详情</summary>
+      <pre style={styles.pre}>{JSON.stringify(item, null, 2)}</pre>
+    </details>
+  </div>
+);
 
-  return (
-    <article style={styles.logCard}>
-      <header style={styles.logHeader}>
-        <div style={styles.logHeaderMain}>
-          <CopyChip label="模型" value={log.model} onCopy={onCopy} strong />
-          <span style={{ ...styles.statusTag, ...statusStyle }}>{log.status}</span>
-        </div>
-        <div style={styles.logMetaRow}>
-          <span>开始：{log.startedAt}</span>
-          <span>结束：{log.endedAt || "-"}</span>
-          <span>耗时：{log.totalDurationMs}ms</span>
-          <span>成功：{log.successCount}</span>
-          <span>失败：{log.failCount}</span>
-        </div>
-      </header>
-
-      <div style={styles.caseList}>
-        {log.cases.map((item) => (
-          <div key={item.id} style={styles.caseItem}>
-            <div style={styles.caseMeta}>
-              <strong>{item.testType}</strong>
-              <span style={item.status === "成功" ? styles.textSuccess : styles.textFail}>
-                {item.status}
-              </span>
-              <span>{item.startedAt}</span>
-              <span>{item.durationMs}ms</span>
-            </div>
-            {item.preview && <div style={styles.preview}>{item.preview}</div>}
-            <details>
-              <summary>查看请求 / 响应详情</summary>
-              <pre style={styles.pre}>{JSON.stringify(item, null, 2)}</pre>
-            </details>
-          </div>
-        ))}
+// 子组件：模型日志卡片
+const ModelLogCard = ({ log, onCopy }) => (
+  <article style={styles.logCard}>
+    <header style={styles.logHeader}>
+      <div style={styles.logHeaderMain}>
+        <CopyChip label="模型" value={log.model} onCopy={onCopy} strong />
+        <span style={{ ...styles.statusTag, ...getStatusStyle(log.status) }}>
+          {log.status}
+        </span>
       </div>
-    </article>
-  );
-};
+      <div style={styles.logMetaRow}>
+        <span>开始：{log.startedAt}</span>
+        <span>结束：{log.endedAt || "-"}</span>
+        <span>耗时：{log.totalDurationMs}ms</span>
+        <span>成功：{log.successCount}</span>
+        <span>失败：{log.failCount}</span>
+      </div>
+    </header>
+    <div style={styles.caseList}>
+      {log.cases.map((item) => (
+        <CaseItem key={item.id} item={item} />
+      ))}
+    </div>
+  </article>
+);
 
+// 主组件
 const App = () => {
   const state = useReactive({
     baseUrl: DEFAULT_CONFIG.baseUrl,
@@ -240,7 +254,10 @@ const App = () => {
   });
 
   const apiRoot = useMemo(() => toApiRoot(state.baseUrl), [state.baseUrl]);
-  const manualModels = useMemo(() => parseModelInput(state.manualModelsText), [state.manualModelsText]);
+  const manualModels = useMemo(
+    () => parseModelInput(state.manualModelsText),
+    [state.manualModelsText],
+  );
   const mergedModels = useMemo(
     () => Array.from(new Set([...state.selectedModels, ...manualModels])),
     [state.selectedModels, manualModels],
@@ -251,20 +268,24 @@ const App = () => {
     state.selectedTestTypes.length > 0 &&
     !state.running;
 
-  const apiClient = useMemo(() => {
-    return axios.create({
-      baseURL: apiRoot,
-      timeout: 120000,
-      headers: {
-        Authorization: `Bearer ${state.token.trim()}`,
-      },
-    });
-  }, [apiRoot, state.token]);
+  const apiClient = useMemo(
+    () =>
+      axios.create({
+        baseURL: apiRoot,
+        timeout: 120000,
+        headers: { Authorization: `Bearer ${state.token.trim()}` },
+      }),
+    [apiRoot, state.token],
+  );
 
+  // 更新指定模型日志
   const updateModelLog = useMemoizedFn((id, updater) => {
-    state.logs = state.logs.map((item) => (item.id === id ? updater(item) : item));
+    state.logs = state.logs.map((item) =>
+      item.id === id ? updater(item) : item,
+    );
   });
 
+  // 复制文本到剪贴板
   const copyText = useMemoizedFn(async (value, label) => {
     if (!value) {
       state.copyHint = `复制失败：${label} 为空`;
@@ -287,33 +308,31 @@ const App = () => {
     }
   });
 
-  // 公共请求方法
-  const requestApi = useMemoizedFn(async ({ path, method = "POST", data, params }) => {
-    try {
-      const response = await apiClient.request({
-        url: path,
-        method,
-        data,
-        params,
-      });
-      return {
-        status: response.status,
-        data: response.data,
-      };
-    } catch (error) {
-      throw normalizeAxiosError(error);
-    }
-  });
+  // 统一API请求方法
+  const requestApi = useMemoizedFn(
+    async ({ path, method = "POST", data, params }) => {
+      try {
+        const response = await apiClient.request({
+          url: path,
+          method,
+          data,
+          params,
+        });
+        return { status: response.status, data: response.data };
+      } catch (error) {
+        throw normalizeAxiosError(error);
+      }
+    },
+  );
 
+  // 拉取模型列表
   const fetchModels = useMemoizedFn(async () => {
     if (!state.token.trim()) {
       state.summary = "请先填写 API Token。";
       return;
     }
-
     state.loadingModels = true;
     state.summary = "正在拉取模型列表...";
-
     try {
       const result = await requestApi({ path: "/models", method: "GET" });
       const list = Array.isArray(result.data?.data)
@@ -329,6 +348,7 @@ const App = () => {
     }
   });
 
+  // 创建测试执行器
   const createTestRunners = useMemoizedFn(() => ({
     text: async (model) => {
       const requestBody = {
@@ -365,7 +385,6 @@ const App = () => {
           },
         ],
       };
-
       const startedAt = dayjs();
       const result = await requestApi({
         path: "/chat/completions",
@@ -381,6 +400,23 @@ const App = () => {
     },
 
     toolCall: async (model) => {
+      const toolDefinition = {
+        type: "function",
+        function: {
+          name: "get_time",
+          description: "返回指定时区的当前时间字符串",
+          parameters: {
+            type: "object",
+            properties: {
+              timezone: {
+                type: "string",
+                description: "时区名称，例如 Asia/Shanghai",
+              },
+            },
+            required: ["timezone"],
+          },
+        },
+      };
       const requestBody = {
         model,
         messages: [
@@ -390,35 +426,16 @@ const App = () => {
               "请调用函数 get_time，参数 timezone 固定为 Asia/Shanghai，然后再给出一句总结。",
           },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "get_time",
-              description: "返回指定时区的当前时间字符串",
-              parameters: {
-                type: "object",
-                properties: {
-                  timezone: {
-                    type: "string",
-                    description: "时区名称，例如 Asia/Shanghai",
-                  },
-                },
-                required: ["timezone"],
-              },
-            },
-          },
-        ],
+        tools: [toolDefinition],
         tool_choice: "auto",
       };
-
       const startedAt = dayjs();
       const first = await requestApi({
         path: "/chat/completions",
         data: requestBody,
       });
-
       const toolCalls = first.data?.choices?.[0]?.message?.tool_calls || [];
+
       if (!toolCalls.length) {
         return {
           status: "失败",
@@ -438,12 +455,10 @@ const App = () => {
           now: dayjs().tz("Asia/Shanghai").format(TIME_FORMAT),
         }),
       }));
-
       const secondBody = {
         model,
         messages: [...requestBody.messages, assistantMessage, ...toolMessages],
       };
-
       const second = await requestApi({
         path: "/chat/completions",
         data: secondBody,
@@ -454,97 +469,8 @@ const App = () => {
         durationMs: dayjs().diff(startedAt),
         request: { first: requestBody, second: secondBody },
         response: { first: first.data, second: second.data },
-        preview: extractChatText(second.data) || "已触发工具调用，但最终无文本输出。",
-      };
-    },
-
-    codex: async (model) => {
-      const requestBody = {
-        model,
-        input: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: "请调用 shell 函数，执行 echo codex-cli-check，只需要发起函数调用。",
-              },
-            ],
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            name: "shell",
-            description: "执行终端命令并返回输出",
-            parameters: {
-              type: "object",
-              properties: {
-                command: {
-                  type: "string",
-                  description: "要执行的命令",
-                },
-              },
-              required: ["command"],
-            },
-          },
-        ],
-        max_output_tokens: 160,
-      };
-
-      const startedAt = dayjs();
-      const first = await requestApi({
-        path: "/responses",
-        data: requestBody,
-      });
-
-      const output = Array.isArray(first.data?.output) ? first.data.output : [];
-      const functionCall = output.find((item) => item?.type === "function_call");
-
-      if (!functionCall?.call_id) {
-        return {
-          status: "失败",
-          durationMs: dayjs().diff(startedAt),
-          request: requestBody,
-          response: first.data,
-          preview: `未检测到 function_call。输出：${extractResponseText(first.data) || "(空)"}`,
-        };
-      }
-
-      const secondBody = {
-        model,
-        previous_response_id: first.data?.id,
-        input: [
-          {
-            type: "function_call_output",
-            call_id: functionCall.call_id,
-            output: JSON.stringify({
-              command: "echo codex-cli-check",
-              stdout: "codex-cli-check",
-              exit_code: 0,
-            }),
-          },
-        ],
-      };
-
-      const second = await requestApi({
-        path: "/responses",
-        data: secondBody,
-      });
-
-      return {
-        status: "成功",
-        durationMs: dayjs().diff(startedAt),
-        request: { first: requestBody, second: secondBody },
-        response: { first: first.data, second: second.data },
-        preview: `检测到 function_call 并完成 function_call_output 回传。最终输出：${
-          extractResponseText(second.data) || "(空)"
-        }`,
-        extra: {
-          hasFunctionCall: true,
-          functionName: functionCall.name || "",
-          hasFinalOutput: Boolean(extractResponseText(second.data)),
-        },
+        preview:
+          extractChatText(second.data) || "已触发工具调用，但最终无文本输出。",
       };
     },
 
@@ -559,24 +485,24 @@ const App = () => {
             description: "回显参数文本",
             parameters: {
               type: "object",
-              properties: {
-                text: { type: "string" },
-              },
+              properties: { text: { type: "string" } },
               required: ["text"],
             },
           },
         ],
         max_output_tokens: 128,
       };
-
       const startedAt = dayjs();
       const result = await requestApi({
         path: "/responses",
         data: requestBody,
       });
-
-      const output = Array.isArray(result.data?.output) ? result.data.output : [];
-      const hasFunctionCall = output.some((item) => item?.type === "function_call");
+      const output = Array.isArray(result.data?.output)
+        ? result.data.output
+        : [];
+      const hasFunctionCall = output.some(
+        (item) => item?.type === "function_call",
+      );
 
       return {
         status: hasFunctionCall ? "成功" : "失败",
@@ -591,6 +517,7 @@ const App = () => {
     },
   }));
 
+  // 执行单个测试用例
   const runSingleCase = useMemoizedFn(async (model, testType, runner) => {
     const startedAt = dayjs();
     try {
@@ -627,6 +554,7 @@ const App = () => {
     }
   });
 
+  // 执行单个模型的所有测试
   const runModelTests = useMemoizedFn(async (model, runners) => {
     const modelLogId = generateId();
     const modelStartedAt = dayjs();
@@ -647,24 +575,24 @@ const App = () => {
       ...state.logs,
     ];
 
-    const activeTestTypes = TEST_TYPES.filter((item) => state.selectedTestTypes.includes(item.key));
+    const activeTestTypes = TEST_TYPES.filter((item) =>
+      state.selectedTestTypes.includes(item.key),
+    );
     for (const { key, label } of activeTestTypes) {
-      if (typeof runners[key] !== "function") {
-        continue;
-      }
+      if (typeof runners[key] !== "function") continue;
       state.summary = `模型 ${model}：执行 ${label}...`;
       const caseLog = await runSingleCase(model, label, runners[key]);
 
       updateModelLog(modelLogId, (old) => {
         const nextCases = [...old.cases, caseLog];
-        const successCount = nextCases.filter((item) => item.status === "成功").length;
-        const failCount = nextCases.length - successCount;
-
+        const successCount = nextCases.filter(
+          (item) => item.status === "成功",
+        ).length;
         return {
           ...old,
           cases: nextCases,
           successCount,
-          failCount,
+          failCount: nextCases.length - successCount,
           totalDurationMs: dayjs().diff(modelStartedAt),
         };
       });
@@ -674,15 +602,19 @@ const App = () => {
       ...old,
       endedAt: formatNow(),
       totalDurationMs: dayjs().diff(modelStartedAt),
-      status: old.failCount > 0 ? (old.successCount > 0 ? "部分失败" : "失败") : "成功",
+      status:
+        old.failCount > 0
+          ? old.successCount > 0
+            ? "部分失败"
+            : "失败"
+          : "成功",
     }));
   });
 
-  // 串行执行：当前模型完成后再进入下一个模型
+  // 串行执行所有模型测试
   const runTests = useMemoizedFn(async () => {
     if (!canRun) return;
     const targetModels = [...mergedModels];
-
     state.running = true;
     state.summary = `开始串行测试，共 ${targetModels.length} 个模型，每个模型 ${state.selectedTestTypes.length} 项。`;
 
@@ -697,20 +629,22 @@ const App = () => {
     }
   });
 
+  // 模型选择操作
   const toggleModel = useMemoizedFn((modelId) => {
     state.selectedModels = state.selectedModels.includes(modelId)
       ? state.selectedModels.filter((id) => id !== modelId)
       : [...state.selectedModels, modelId];
   });
 
-  const selectAll = useMemoizedFn(() => {
+  const selectAllModels = useMemoizedFn(() => {
     state.selectedModels = [...state.models];
   });
 
-  const clearSelection = useMemoizedFn(() => {
+  const clearModelSelection = useMemoizedFn(() => {
     state.selectedModels = [];
   });
 
+  // 测试类型选择操作
   const toggleTestType = useMemoizedFn((key) => {
     state.selectedTestTypes = state.selectedTestTypes.includes(key)
       ? state.selectedTestTypes.filter((item) => item !== key)
@@ -725,6 +659,7 @@ const App = () => {
     state.selectedTestTypes = [];
   });
 
+  // 日志操作
   const clearLogs = useMemoizedFn(() => {
     state.logs = [];
   });
@@ -734,10 +669,10 @@ const App = () => {
       type: "application/json",
     });
     const url = URL.createObjectURL(file);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `openai-model-test-${dayjs().format("YYYYMMDD-HHmmss")}.json`;
-    a.click();
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `openai-model-test-${dayjs().format("YYYYMMDD-HHmmss")}.json`;
+    anchor.click();
     URL.revokeObjectURL(url);
   });
 
@@ -751,40 +686,30 @@ const App = () => {
           <ConfigField
             label="API Base URL"
             value={state.baseUrl}
-            onChange={(v) => {
-              state.baseUrl = v;
-            }}
+            onChange={(v) => (state.baseUrl = v)}
             placeholder="https://api.openai.com/v1"
           />
           <ConfigField
             label="API Token"
             value={state.token}
-            onChange={(v) => {
-              state.token = v;
-            }}
+            onChange={(v) => (state.token = v)}
             type="password"
             placeholder="sk-..."
           />
           <ConfigField
             label="文本测试提示词"
             value={state.textPrompt}
-            onChange={(v) => {
-              state.textPrompt = v;
-            }}
+            onChange={(v) => (state.textPrompt = v)}
           />
           <ConfigField
             label="图像测试提示词"
             value={state.imagePrompt}
-            onChange={(v) => {
-              state.imagePrompt = v;
-            }}
+            onChange={(v) => (state.imagePrompt = v)}
           />
           <ConfigField
             label="图像 URL"
             value={state.imageUrl}
-            onChange={(v) => {
-              state.imageUrl = v;
-            }}
+            onChange={(v) => (state.imageUrl = v)}
             placeholder="https://..."
           />
           <div style={styles.field}>
@@ -796,14 +721,19 @@ const App = () => {
         <div style={styles.row}>
           <ActionButton
             onClick={fetchModels}
-            disabled={state.loadingModels || !state.token.trim() || state.running}
+            disabled={
+              state.loadingModels || !state.token.trim() || state.running
+            }
           >
             {state.loadingModels ? "拉取中..." : "拉取模型列表"}
           </ActionButton>
           <ActionButton onClick={runTests} disabled={!canRun} primary>
             {state.running ? "测试中..." : "开始串行测试"}
           </ActionButton>
-          <ActionButton onClick={clearLogs} disabled={state.running || state.logs.length === 0}>
+          <ActionButton
+            onClick={clearLogs}
+            disabled={state.running || state.logs.length === 0}
+          >
             清空日志
           </ActionButton>
           <ActionButton onClick={exportLogs} disabled={state.logs.length === 0}>
@@ -812,11 +742,30 @@ const App = () => {
         </div>
 
         <div style={styles.highlightArea}>
-          <CopyChip label="Url" value={state.baseUrl.trim()} onCopy={copyText} strong />
-          <CopyChip label="API Token" value={state.token.trim()} onCopy={copyText} strong />
-          <CopyChip label="Token(脱敏)" value={maskToken(state.token)} onCopy={copyText} />
+          <CopyChip
+            label="Url"
+            value={state.baseUrl.trim()}
+            onCopy={copyText}
+            strong
+          />
+          <CopyChip
+            label="API Token"
+            value={state.token.trim()}
+            onCopy={copyText}
+            strong
+          />
+          <CopyChip
+            label="Token(脱敏)"
+            value={maskToken(state.token)}
+            onCopy={copyText}
+          />
           {mergedModels.map((model) => (
-            <CopyChip key={model} label="模型" value={model} onCopy={copyText} />
+            <CopyChip
+              key={model}
+              label="模型"
+              value={model}
+              onCopy={copyText}
+            />
           ))}
         </div>
 
@@ -831,22 +780,24 @@ const App = () => {
           <input
             style={styles.input}
             value={state.manualModelsText}
-            onChange={(e) => {
-              state.manualModelsText = e.target.value;
-            }}
+            onChange={(e) => (state.manualModelsText = e.target.value)}
             placeholder="例如：gpt-4o,gpt-4.1, o3-mini"
             disabled={state.running}
           />
           <span style={styles.fieldLabel}>
-            会与勾选模型合并去重后执行，当前补充 {manualModels.length} 个，合计执行 {mergedModels.length} 个。
+            会与勾选模型合并去重后执行，当前补充 {manualModels.length}{" "}
+            个，合计执行 {mergedModels.length} 个。
           </span>
         </div>
         <div style={styles.row}>
-          <ActionButton onClick={selectAll} disabled={state.models.length === 0 || state.running}>
+          <ActionButton
+            onClick={selectAllModels}
+            disabled={state.models.length === 0 || state.running}
+          >
             全选
           </ActionButton>
           <ActionButton
-            onClick={clearSelection}
+            onClick={clearModelSelection}
             disabled={state.selectedModels.length === 0 || state.running}
           >
             清空选择
@@ -867,7 +818,10 @@ const App = () => {
         <div style={styles.row}>
           <ActionButton
             onClick={selectAllTestTypes}
-            disabled={state.selectedTestTypes.length === TEST_TYPES.length || state.running}
+            disabled={
+              state.selectedTestTypes.length === TEST_TYPES.length ||
+              state.running
+            }
           >
             全选
           </ActionButton>
@@ -957,10 +911,7 @@ const styles = {
     color: "#fff",
     fontWeight: 600,
   },
-  buttonDisabled: {
-    opacity: 0.65,
-    cursor: "not-allowed",
-  },
+  buttonDisabled: { opacity: 0.65, cursor: "not-allowed" },
   code: {
     background: "#f5f8fc",
     border: "1px solid #d3dce7",
@@ -997,11 +948,7 @@ const styles = {
     borderColor: "#0969da",
     boxShadow: "0 0 0 2px rgba(9, 105, 218, 0.12)",
   },
-  copyChipLabel: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: "#0f3c78",
-  },
+  copyChipLabel: { fontSize: 14, fontWeight: 700, color: "#0f3c78" },
   copyChipValue: {
     fontSize: 14,
     whiteSpace: "nowrap",
@@ -1009,16 +956,8 @@ const styles = {
     textOverflow: "ellipsis",
     maxWidth: 280,
   },
-  summary: {
-    margin: 0,
-    fontSize: 14,
-    color: "#374151",
-  },
-  copyHint: {
-    margin: "6px 0 0 0",
-    color: "#0f5132",
-    fontSize: 14,
-  },
+  summary: { margin: 0, fontSize: 14, color: "#374151" },
+  copyHint: { margin: "6px 0 0 0", color: "#0f5132", fontSize: 14 },
   modelList: {
     maxHeight: 280,
     overflow: "auto",
@@ -1032,11 +971,7 @@ const styles = {
     alignItems: "center",
     padding: "4px 2px",
   },
-  logList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
+  logList: { display: "flex", flexDirection: "column", gap: 12 },
   logCard: {
     border: "1px solid #d0d7de",
     borderRadius: 10,
@@ -1089,12 +1024,7 @@ const styles = {
     background: "#ddeeff",
     borderColor: "#9cc5ff",
   },
-  caseList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-    padding: 12,
-  },
+  caseList: { display: "flex", flexDirection: "column", gap: 10, padding: 12 },
   caseItem: {
     border: "1px solid #dbe5ef",
     borderRadius: 8,
@@ -1108,14 +1038,8 @@ const styles = {
     fontSize: 16,
     marginBottom: 6,
   },
-  textSuccess: {
-    color: "#1a7f37",
-    fontWeight: 700,
-  },
-  textFail: {
-    color: "#d1242f",
-    fontWeight: 700,
-  },
+  textSuccess: { color: "#1a7f37", fontWeight: 700 },
+  textFail: { color: "#d1242f", fontWeight: 700 },
   preview: {
     fontSize: 14,
     marginBottom: 8,
