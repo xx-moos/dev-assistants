@@ -25,6 +25,7 @@ const TEST_TYPES = [
   { key: "image", label: "图像理解" },
   { key: "toolCall", label: "工具调用" },
   { key: "cliApi", label: "CLI 接口" },
+  { key: "codex", label: "Codex CLI 能力" },
 ];
 
 const toApiRoot = (input) => {
@@ -62,6 +63,16 @@ const extractResponseText = (data) => {
     .filter(Boolean)
     .join("\n");
 };
+
+const parseModelInput = (text) =>
+  Array.from(
+    new Set(
+      (text || "")
+        .split(/[,，\n]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
 
 const normalizeAxiosError = (error) => {
   const status = error?.response?.status || null;
@@ -145,6 +156,22 @@ const ModelSelector = ({ models, selectedModels, onToggle, disabled }) => (
   </div>
 );
 
+const TestTypeSelector = ({ selectedTestTypes, onToggle, disabled }) => (
+  <div style={styles.modelList}>
+    {TEST_TYPES.map((item) => (
+      <label key={item.key} style={styles.modelItem}>
+        <input
+          type="checkbox"
+          checked={selectedTestTypes.includes(item.key)}
+          disabled={disabled}
+          onChange={() => onToggle(item.key)}
+        />
+        <span>{item.label}</span>
+      </label>
+    ))}
+  </div>
+);
+
 const ModelLogCard = ({ log, onCopy }) => {
   const statusStyle =
     log.status === "成功"
@@ -203,6 +230,8 @@ const App = () => {
     imageUrl: DEFAULT_CONFIG.imageUrl,
     models: [],
     selectedModels: [],
+    manualModelsText: "",
+    selectedTestTypes: TEST_TYPES.map((item) => item.key),
     loadingModels: false,
     running: false,
     logs: [],
@@ -211,7 +240,16 @@ const App = () => {
   });
 
   const apiRoot = useMemo(() => toApiRoot(state.baseUrl), [state.baseUrl]);
-  const canRun = state.token.trim() && state.selectedModels.length > 0 && !state.running;
+  const manualModels = useMemo(() => parseModelInput(state.manualModelsText), [state.manualModelsText]);
+  const mergedModels = useMemo(
+    () => Array.from(new Set([...state.selectedModels, ...manualModels])),
+    [state.selectedModels, manualModels],
+  );
+  const canRun =
+    state.token.trim() &&
+    mergedModels.length > 0 &&
+    state.selectedTestTypes.length > 0 &&
+    !state.running;
 
   const apiClient = useMemo(() => {
     return axios.create({
@@ -420,6 +458,96 @@ const App = () => {
       };
     },
 
+    codex: async (model) => {
+      const requestBody = {
+        model,
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: "请调用 shell 函数，执行 echo codex-cli-check，只需要发起函数调用。",
+              },
+            ],
+          },
+        ],
+        tools: [
+          {
+            type: "function",
+            name: "shell",
+            description: "执行终端命令并返回输出",
+            parameters: {
+              type: "object",
+              properties: {
+                command: {
+                  type: "string",
+                  description: "要执行的命令",
+                },
+              },
+              required: ["command"],
+            },
+          },
+        ],
+        max_output_tokens: 160,
+      };
+
+      const startedAt = dayjs();
+      const first = await requestApi({
+        path: "/responses",
+        data: requestBody,
+      });
+
+      const output = Array.isArray(first.data?.output) ? first.data.output : [];
+      const functionCall = output.find((item) => item?.type === "function_call");
+
+      if (!functionCall?.call_id) {
+        return {
+          status: "失败",
+          durationMs: dayjs().diff(startedAt),
+          request: requestBody,
+          response: first.data,
+          preview: `未检测到 function_call。输出：${extractResponseText(first.data) || "(空)"}`,
+        };
+      }
+
+      const secondBody = {
+        model,
+        previous_response_id: first.data?.id,
+        input: [
+          {
+            type: "function_call_output",
+            call_id: functionCall.call_id,
+            output: JSON.stringify({
+              command: "echo codex-cli-check",
+              stdout: "codex-cli-check",
+              exit_code: 0,
+            }),
+          },
+        ],
+      };
+
+      const second = await requestApi({
+        path: "/responses",
+        data: secondBody,
+      });
+
+      return {
+        status: "成功",
+        durationMs: dayjs().diff(startedAt),
+        request: { first: requestBody, second: secondBody },
+        response: { first: first.data, second: second.data },
+        preview: `检测到 function_call 并完成 function_call_output 回传。最终输出：${
+          extractResponseText(second.data) || "(空)"
+        }`,
+        extra: {
+          hasFunctionCall: true,
+          functionName: functionCall.name || "",
+          hasFinalOutput: Boolean(extractResponseText(second.data)),
+        },
+      };
+    },
+
     cliApi: async (model) => {
       const requestBody = {
         model,
@@ -519,7 +647,11 @@ const App = () => {
       ...state.logs,
     ];
 
-    for (const { key, label } of TEST_TYPES) {
+    const activeTestTypes = TEST_TYPES.filter((item) => state.selectedTestTypes.includes(item.key));
+    for (const { key, label } of activeTestTypes) {
+      if (typeof runners[key] !== "function") {
+        continue;
+      }
       state.summary = `模型 ${model}：执行 ${label}...`;
       const caseLog = await runSingleCase(model, label, runners[key]);
 
@@ -549,16 +681,17 @@ const App = () => {
   // 串行执行：当前模型完成后再进入下一个模型
   const runTests = useMemoizedFn(async () => {
     if (!canRun) return;
+    const targetModels = [...mergedModels];
 
     state.running = true;
-    state.summary = `开始串行测试，共 ${state.selectedModels.length} 个模型。`;
+    state.summary = `开始串行测试，共 ${targetModels.length} 个模型，每个模型 ${state.selectedTestTypes.length} 项。`;
 
     try {
       const runners = createTestRunners();
-      for (const model of state.selectedModels) {
+      for (const model of targetModels) {
         await runModelTests(model, runners);
       }
-      state.summary = `测试完成，共执行 ${state.selectedModels.length * TEST_TYPES.length} 项。`;
+      state.summary = `测试完成，共执行 ${targetModels.length * state.selectedTestTypes.length} 项。`;
     } finally {
       state.running = false;
     }
@@ -576,6 +709,20 @@ const App = () => {
 
   const clearSelection = useMemoizedFn(() => {
     state.selectedModels = [];
+  });
+
+  const toggleTestType = useMemoizedFn((key) => {
+    state.selectedTestTypes = state.selectedTestTypes.includes(key)
+      ? state.selectedTestTypes.filter((item) => item !== key)
+      : [...state.selectedTestTypes, key];
+  });
+
+  const selectAllTestTypes = useMemoizedFn(() => {
+    state.selectedTestTypes = TEST_TYPES.map((item) => item.key);
+  });
+
+  const clearTestTypes = useMemoizedFn(() => {
+    state.selectedTestTypes = [];
   });
 
   const clearLogs = useMemoizedFn(() => {
@@ -668,7 +815,7 @@ const App = () => {
           <CopyChip label="Url" value={state.baseUrl.trim()} onCopy={copyText} strong />
           <CopyChip label="API Token" value={state.token.trim()} onCopy={copyText} strong />
           <CopyChip label="Token(脱敏)" value={maskToken(state.token)} onCopy={copyText} />
-          {state.selectedModels.map((model) => (
+          {mergedModels.map((model) => (
             <CopyChip key={model} label="模型" value={model} onCopy={copyText} />
           ))}
         </div>
@@ -679,6 +826,21 @@ const App = () => {
 
       <section style={styles.card}>
         <h2 style={styles.subtitle}>模型选择</h2>
+        <div style={styles.field}>
+          <span style={styles.fieldLabel}>补充模型（逗号分割，可多填）</span>
+          <input
+            style={styles.input}
+            value={state.manualModelsText}
+            onChange={(e) => {
+              state.manualModelsText = e.target.value;
+            }}
+            placeholder="例如：gpt-4o,gpt-4.1, o3-mini"
+            disabled={state.running}
+          />
+          <span style={styles.fieldLabel}>
+            会与勾选模型合并去重后执行，当前补充 {manualModels.length} 个，合计执行 {mergedModels.length} 个。
+          </span>
+        </div>
         <div style={styles.row}>
           <ActionButton onClick={selectAll} disabled={state.models.length === 0 || state.running}>
             全选
@@ -689,12 +851,37 @@ const App = () => {
           >
             清空选择
           </ActionButton>
-          <span>已选：{state.selectedModels.length}</span>
+          <span>勾选：{state.selectedModels.length}</span>
+          <span>总计：{mergedModels.length}</span>
         </div>
         <ModelSelector
           models={state.models}
           selectedModels={state.selectedModels}
           onToggle={toggleModel}
+          disabled={state.running}
+        />
+      </section>
+
+      <section style={styles.card}>
+        <h2 style={styles.subtitle}>测试类型选择</h2>
+        <div style={styles.row}>
+          <ActionButton
+            onClick={selectAllTestTypes}
+            disabled={state.selectedTestTypes.length === TEST_TYPES.length || state.running}
+          >
+            全选
+          </ActionButton>
+          <ActionButton
+            onClick={clearTestTypes}
+            disabled={state.selectedTestTypes.length === 0 || state.running}
+          >
+            清空选择
+          </ActionButton>
+          <span>已选：{state.selectedTestTypes.length}</span>
+        </div>
+        <TestTypeSelector
+          selectedTestTypes={state.selectedTestTypes}
+          onToggle={toggleTestType}
           disabled={state.running}
         />
       </section>
