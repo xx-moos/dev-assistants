@@ -97,9 +97,9 @@ const normalizeAxiosError = (error) => {
 // 状态样式映射
 const getStatusStyle = (status) => {
   const styleMap = {
-    '成功': styles.statusSuccess,
-    '失败': styles.statusFail,
-    '部分失败': styles.statusWarn,
+    成功: styles.statusSuccess,
+    失败: styles.statusFail,
+    部分失败: styles.statusWarn,
   };
   return styleMap[status] || styles.statusRunning;
 };
@@ -781,15 +781,6 @@ const ModelTest = () => {
           <ActionButton onClick={runTests} disabled={!canRun} primary>
             {state.running ? "测试中..." : "开始串行测试"}
           </ActionButton>
-          <ActionButton
-            onClick={clearLogs}
-            disabled={state.running || state.logs.length === 0}
-          >
-            清空日志
-          </ActionButton>
-          <ActionButton onClick={exportLogs} disabled={state.logs.length === 0}>
-            导出日志 JSON
-          </ActionButton>
         </div>
 
         <div style={styles.highlightArea}>
@@ -824,97 +815,118 @@ const ModelTest = () => {
         {state.copyHint && <p style={styles.copyHint}>{state.copyHint}</p>}
       </section>
 
-      <section style={styles.card}>
-        <h2 style={styles.subtitle}>模型选择</h2>
-        <div style={styles.field}>
-          <span style={styles.fieldLabel}>补充模型（逗号分割，可多填）</span>
-          <input
-            style={styles.input}
-            value={state.manualModelsText}
-            onChange={(e) => (state.manualModelsText = e.target.value)}
-            placeholder="例如：gpt-4o,gpt-4.1, o3-mini"
-            disabled={state.running}
-          />
-          <span style={styles.fieldLabel}>
-            会与勾选模型合并去重后执行，当前补充 {manualModels.length}{" "}
-            个，合计执行 {mergedModels.length} 个。
-          </span>
+      <div style={styles.mainLayout}>
+        <div style={styles.leftPane}>
+          <section style={styles.card}>
+            <h2 style={styles.subtitle}>模型选择</h2>
+            <div style={styles.field}>
+              <span style={styles.fieldLabel}>
+                补充模型（逗号分割，可多填）
+              </span>
+              <input
+                style={styles.input}
+                value={state.manualModelsText}
+                onChange={(e) => (state.manualModelsText = e.target.value)}
+                placeholder="例如：gpt-4o,gpt-4.1, o3-mini"
+                disabled={state.running}
+              />
+              <span style={styles.fieldLabel}>
+                会与勾选模型合并去重后执行，当前补充 {manualModels.length}{" "}
+                个，合计执行 {mergedModels.length} 个。
+              </span>
+            </div>
+            <div style={styles.row}>
+              <ActionButton
+                onClick={selectAllModels}
+                disabled={state.models.length === 0 || state.running}
+              >
+                全选
+              </ActionButton>
+              <ActionButton
+                onClick={clearModelSelection}
+                disabled={state.selectedModels.length === 0 || state.running}
+              >
+                清空选择
+              </ActionButton>
+              <span>勾选：{state.selectedModels.length}</span>
+              <span>总计：{mergedModels.length}</span>
+            </div>
+            <ModelSelector
+              models={state.models}
+              selectedModels={state.selectedModels}
+              onToggle={toggleModel}
+              disabled={state.running}
+            />
+          </section>
         </div>
-        <div style={styles.row}>
-          <ActionButton
-            onClick={selectAllModels}
-            disabled={state.models.length === 0 || state.running}
-          >
-            全选
-          </ActionButton>
-          <ActionButton
-            onClick={clearModelSelection}
-            disabled={state.selectedModels.length === 0 || state.running}
-          >
-            清空选择
-          </ActionButton>
-          <span>勾选：{state.selectedModels.length}</span>
-          <span>总计：{mergedModels.length}</span>
-        </div>
-        <ModelSelector
-          models={state.models}
-          selectedModels={state.selectedModels}
-          onToggle={toggleModel}
-          disabled={state.running}
-        />
-      </section>
 
-      <section style={styles.card}>
-        <h2 style={styles.subtitle}>测试类型选择</h2>
-        <div style={styles.row}>
-          <ActionButton
-            onClick={selectAllTestTypes}
-            disabled={
-              state.selectedTestTypes.length === TEST_TYPES.length ||
-              state.running
-            }
-          >
-            全选
-          </ActionButton>
-          <ActionButton
-            onClick={clearTestTypes}
-            disabled={state.selectedTestTypes.length === 0 || state.running}
-          >
-            清空选择
-          </ActionButton>
-          <span>已选：{state.selectedTestTypes.length}</span>
-        </div>
-        <TestTypeSelector
-          selectedTestTypes={state.selectedTestTypes}
-          onToggle={toggleTestType}
-          disabled={state.running}
-        />
-      </section>
+        <div style={styles.rightPane}>
+          <section style={styles.card}>
+            <h2 style={styles.subtitle}>测试类型选择</h2>
+            <div style={styles.row}>
+              <ActionButton
+                onClick={selectAllTestTypes}
+                disabled={
+                  state.selectedTestTypes.length === TEST_TYPES.length ||
+                  state.running
+                }
+              >
+                全选
+              </ActionButton>
+              <ActionButton
+                onClick={clearTestTypes}
+                disabled={state.selectedTestTypes.length === 0 || state.running}
+              >
+                清空选择
+              </ActionButton>
+              <span>已选：{state.selectedTestTypes.length}</span>
+            </div>
+            <TestTypeSelector
+              selectedTestTypes={state.selectedTestTypes}
+              onToggle={toggleTestType}
+              disabled={state.running}
+            />
+          </section>
 
-      <section style={styles.card}>
-        <h2 style={styles.subtitle}>模型请求日志（按模型归并）</h2>
-        {state.logs.length === 0 ? (
-          <div style={styles.empty}>暂无日志。</div>
-        ) : (
-          <div style={styles.logList}>
-            {state.logs.map((log) => (
-              <ModelLogCard key={log.id} log={log} onCopy={copyText} />
-            ))}
-          </div>
-        )}
-      </section>
+          <section style={styles.card}>
+            <h2 style={styles.subtitle}>
+              模型请求日志（按模型归并）
+              <ActionButton
+                onClick={clearLogs}
+                disabled={state.running || state.logs.length === 0}
+              >
+                清空日志
+              </ActionButton>
+              &nbsp;
+              <ActionButton
+                onClick={exportLogs}
+                disabled={state.logs.length === 0}
+              >
+                导出日志 JSON
+              </ActionButton>
+            </h2>
+            {state.logs.length === 0 ? (
+              <div style={styles.empty}>暂无日志。</div>
+            ) : (
+              <div style={styles.logList}>
+                {state.logs.map((log) => (
+                  <ModelLogCard key={log.id} log={log} onCopy={copyText} />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 };
 
 const styles = {
   page: {
-    maxWidth: 1400,
     margin: "0 auto",
-    padding: 18,
+    padding: 20,
     fontFamily: "'Segoe UI', 'PingFang SC', sans-serif",
     color: "#1f2328",
-    background: "linear-gradient(180deg, #f7faff 0%, #ffffff 28%)",
   },
   title: { fontSize: 30, marginBottom: 14 },
   navRow: {
@@ -936,6 +948,21 @@ const styles = {
     marginBottom: 16,
     background: "#fff",
     boxShadow: "0 4px 12px rgba(15, 23, 42, 0.04)",
+  },
+  mainLayout: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 16,
+    alignItems: "flex-start",
+  },
+  leftPane: {
+    // flex: "1 1 440px",
+    // minWidth: 320,
+    width: "32%",
+  },
+  rightPane: {
+    flex: "1.25 1 520px",
+    minWidth: 360,
   },
   row: {
     display: "flex",
@@ -1021,19 +1048,27 @@ const styles = {
   summary: { margin: 0, fontSize: 14, color: "#374151" },
   copyHint: { margin: "6px 0 0 0", color: "#0f5132", fontSize: 14 },
   modelList: {
-    maxHeight: 280,
+    maxHeight: 220,
     overflow: "auto",
     border: "1px solid #d0d7de",
     borderRadius: 8,
     padding: 8,
+    display: "flex",
+    flexWrap: "wrap",
+    alignContent: "flex-start",
+    gap: 8,
   },
   modelItem: {
-    display: "flex",
-    gap: 8,
+    display: "inline-flex",
+    gap: 6,
     alignItems: "center",
-    padding: "4px 2px",
+    padding: "2px 8px",
+    borderRadius: 999,
+    background: "#f8fbff",
+    border: "1px solid #d9e2ec",
+    whiteSpace: "nowrap",
   },
-  logList: { display: "flex", flexDirection: "column", gap: 12 },
+  logList: { display: "flex", flexDirection: "column", gap: 8 },
   logCard: {
     border: "1px solid #d0d7de",
     borderRadius: 10,
@@ -1041,28 +1076,28 @@ const styles = {
     background: "#fafcff",
   },
   logHeader: {
-    padding: 12,
+    padding: 9,
     borderBottom: "1px solid #e5edf5",
     background: "#f4f8ff",
   },
   logHeaderMain: {
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 8,
+    gap: 8,
+    marginBottom: 6,
     flexWrap: "wrap",
   },
   logMetaRow: {
     display: "flex",
-    gap: 10,
+    gap: 8,
     flexWrap: "wrap",
-    fontSize: 16,
+    fontSize: 13,
     color: "#4b5563",
   },
   statusTag: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 700,
-    padding: "4px 8px",
+    padding: "2px 8px",
     borderRadius: 999,
     border: "1px solid transparent",
   },
@@ -1086,44 +1121,39 @@ const styles = {
     background: "#ddeeff",
     borderColor: "#9cc5ff",
   },
-  caseList: { display: "flex", flexDirection: "column", gap: 10, padding: 12 },
+  caseList: { display: "flex", flexDirection: "column", gap: 8, padding: 9 },
   caseItem: {
     border: "1px solid #dbe5ef",
     borderRadius: 8,
     background: "#fff",
-    padding: 10,
+    padding: 8,
   },
   caseMeta: {
     display: "flex",
-    gap: 10,
+    gap: 8,
     flexWrap: "wrap",
-    fontSize: 16,
-    marginBottom: 6,
+    fontSize: 13,
+    marginBottom: 4,
   },
   textSuccess: { color: "#1a7f37", fontWeight: 700 },
   textFail: { color: "#d1242f", fontWeight: 700 },
   preview: {
-    fontSize: 14,
-    marginBottom: 8,
+    fontSize: 13,
+    marginBottom: 6,
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
   },
   pre: {
-    marginTop: 8,
-    maxHeight: 260,
+    marginTop: 6,
+    maxHeight: 220,
     overflow: "auto",
     background: "#fff",
     border: "1px solid #d0d7de",
     borderRadius: 6,
     padding: 8,
-    fontSize: 14,
+    fontSize: 12,
   },
   empty: { color: "#57606a", fontSize: 14 },
 };
 
 export default ModelTest;
-
-
-
-
-
