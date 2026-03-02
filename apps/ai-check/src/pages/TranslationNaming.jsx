@@ -34,141 +34,431 @@ const toCamelCase = (words) =>
   words.length === 0
     ? ""
     : `${words[0]}${words
-      .slice(1)
-      .map((word) => upperFirst(word))
-      .join("")}`;
+        .slice(1)
+        .map((word) => upperFirst(word))
+        .join("")}`;
 
 const toPascalCase = (words) => words.map((word) => upperFirst(word)).join("");
 const toSnakeCase = (words) => words.join("_");
-const toUpperSnakeCase = (words) => words.join("_").toUpperCase();
-const toKebabCase = (words) => words.join("-");
-const toDotCase = (words) => words.join(".");
 
-const ensureValidIdentifier = (value, { prefix = "v" } = {}) => {
-  if (!value) return prefix;
-  if (/^[a-zA-Z_$]/.test(value)) return value;
-  return `${prefix}_${value}`;
+const ensurePascalFileName = (value) => {
+  if (!value) return "Module";
+  if (/^[A-Za-z]/.test(value)) return value;
+  return `Module${value}`;
+};
+
+const ensureCamelFileName = (value) => {
+  if (!value) return "moduleName";
+  if (/^[A-Za-z]/.test(value)) return value;
+  return `module${value}`;
+};
+
+const ensureSnakeFileName = (value) => {
+  const base = value || "module_name";
+  if (/^[a-z]/.test(base)) return base;
+  return `module_${base}`;
 };
 
 const buildNameRows = (words) => {
-  const camel = ensureValidIdentifier(toCamelCase(words), { prefix: "v" });
-  const pascal = ensureValidIdentifier(toPascalCase(words), { prefix: "Type" });
-  const snake = ensureValidIdentifier(toSnakeCase(words), { prefix: "v" });
-  const upperSnake = ensureValidIdentifier(toUpperSnakeCase(words), {
-    prefix: "CONST",
-  });
-  const kebab = toKebabCase(words) || "name-placeholder";
-  const dot = toDotCase(words) || "name.placeholder";
+  const pascal = ensurePascalFileName(toPascalCase(words));
+  const camel = ensureCamelFileName(toCamelCase(words));
+  const snake = ensureSnakeFileName(toSnakeCase(words));
 
   return [
     {
-      id: "jsVar",
-      language: "JavaScript / TypeScript",
-      rule: "变量（camelCase）",
-      value: camel,
-    },
-    {
-      id: "jsConst",
-      language: "JavaScript / TypeScript",
-      rule: "常量（UPPER_SNAKE_CASE）",
-      value: upperSnake,
-    },
-    {
-      id: "javaVar",
-      language: "Java / Kotlin",
-      rule: "字段（camelCase）",
-      value: camel,
-    },
-    {
-      id: "javaType",
-      language: "Java / Kotlin",
-      rule: "类型（PascalCase）",
+      id: "jsComponent",
+      language: "JavaScript",
+      rule: "组件（PascalCase，不含后缀）",
       value: pascal,
     },
     {
-      id: "pyVar",
+      id: "jsPage",
+      language: "JavaScript",
+      rule: "页面（PascalCasePage）",
+      value: `${pascal}Page`,
+    },
+    {
+      id: "jsLayout",
+      language: "JavaScript",
+      rule: "布局（PascalCaseLayout）",
+      value: `${pascal}Layout`,
+    },
+    {
+      id: "jsHook",
+      language: "JavaScript",
+      rule: "Hook（usePascalCase）",
+      value: `use${pascal}`,
+    },
+    {
+      id: "jsContext",
+      language: "JavaScript",
+      rule: "上下文（PascalCaseContext）",
+      value: `${pascal}Context`,
+    },
+    {
+      id: "jsProvider",
+      language: "JavaScript",
+      rule: "Provider（PascalCaseProvider）",
+      value: `${pascal}Provider`,
+    },
+    {
+      id: "jsStore",
+      language: "JavaScript",
+      rule: "状态仓库（camelCaseStore）",
+      value: `${camel}Store`,
+    },
+    {
+      id: "jsSlice",
+      language: "JavaScript",
+      rule: "状态切片（camelCaseSlice）",
+      value: `${camel}Slice`,
+    },
+    {
+      id: "jsReducer",
+      language: "JavaScript",
+      rule: "Reducer（camelCaseReducer）",
+      value: `${camel}Reducer`,
+    },
+    {
+      id: "jsService",
+      language: "JavaScript",
+      rule: "业务服务（camelCaseService）",
+      value: `${camel}Service`,
+    },
+    {
+      id: "jsApi",
+      language: "JavaScript",
+      rule: "接口封装（camelCaseApi）",
+      value: `${camel}Api`,
+    },
+    {
+      id: "jsUtil",
+      language: "JavaScript",
+      rule: "工具模块（camelCaseUtils）",
+      value: `${camel}Utils`,
+    },
+    {
+      id: "jsConstants",
+      language: "JavaScript",
+      rule: "常量模块（camelCaseConstants）",
+      value: `${camel}Constants`,
+    },
+    {
+      id: "jsTypes",
+      language: "JavaScript",
+      rule: "类型定义（camelCaseTypes）",
+      value: `${camel}Types`,
+    },
+    {
+      id: "jsRoutes",
+      language: "JavaScript",
+      rule: "路由配置（camelCaseRoutes）",
+      value: `${camel}Routes`,
+    },
+    {
+      id: "jsConfig",
+      language: "JavaScript",
+      rule: "配置模块（camelCaseConfig）",
+      value: `${camel}Config`,
+    },
+    {
+      id: "jsStyles",
+      language: "JavaScript",
+      rule: "样式模块（PascalCaseStyles）",
+      value: `${pascal}Styles`,
+    },
+    {
+      id: "javaController",
+      language: "Java",
+      rule: "控制器（PascalCaseController）",
+      value: `${pascal}Controller`,
+    },
+    {
+      id: "javaService",
+      language: "Java",
+      rule: "服务层（PascalCaseService）",
+      value: `${pascal}Service`,
+    },
+    {
+      id: "javaInterface",
+      language: "Java",
+      rule: "服务接口（IPascalCaseService）",
+      value: `I${pascal}Service`,
+    },
+    {
+      id: "javaImpl",
+      language: "Java",
+      rule: "服务实现（PascalCaseServiceImpl）",
+      value: `${pascal}ServiceImpl`,
+    },
+    {
+      id: "javaRepository",
+      language: "Java",
+      rule: "仓储层（PascalCaseRepository）",
+      value: `${pascal}Repository`,
+    },
+    {
+      id: "javaDao",
+      language: "Java",
+      rule: "DAO（PascalCaseDao）",
+      value: `${pascal}Dao`,
+    },
+    {
+      id: "javaMapper",
+      language: "Java",
+      rule: "Mapper（PascalCaseMapper）",
+      value: `${pascal}Mapper`,
+    },
+    {
+      id: "javaEntity",
+      language: "Java",
+      rule: "实体（PascalCaseEntity）",
+      value: `${pascal}Entity`,
+    },
+    {
+      id: "javaDO",
+      language: "Java",
+      rule: "数据对象（PascalCaseDO）",
+      value: `${pascal}DO`,
+    },
+    {
+      id: "javaPO",
+      language: "Java",
+      rule: "持久对象（PascalCasePO）",
+      value: `${pascal}PO`,
+    },
+    {
+      id: "javaDTO",
+      language: "Java",
+      rule: "数据传输（PascalCaseDTO）",
+      value: `${pascal}DTO`,
+    },
+    {
+      id: "javaVO",
+      language: "Java",
+      rule: "视图对象（PascalCaseVO）",
+      value: `${pascal}VO`,
+    },
+    {
+      id: "javaBO",
+      language: "Java",
+      rule: "业务对象（PascalCaseBO）",
+      value: `${pascal}BO`,
+    },
+    {
+      id: "javaQuery",
+      language: "Java",
+      rule: "查询对象（PascalCaseQuery）",
+      value: `${pascal}Query`,
+    },
+    {
+      id: "javaCommand",
+      language: "Java",
+      rule: "命令对象（PascalCaseCommand）",
+      value: `${pascal}Command`,
+    },
+    {
+      id: "javaParam",
+      language: "Java",
+      rule: "参数对象（PascalCaseParam）",
+      value: `${pascal}Param`,
+    },
+    {
+      id: "javaRequest",
+      language: "Java",
+      rule: "请求模型（PascalCaseRequest）",
+      value: `${pascal}Request`,
+    },
+    {
+      id: "javaResponse",
+      language: "Java",
+      rule: "响应模型（PascalCaseResponse）",
+      value: `${pascal}Response`,
+    },
+    {
+      id: "javaConverter",
+      language: "Java",
+      rule: "转换器（PascalCaseConverter）",
+      value: `${pascal}Converter`,
+    },
+    {
+      id: "javaConfig",
+      language: "Java",
+      rule: "配置类（PascalCaseConfig）",
+      value: `${pascal}Config`,
+    },
+    {
+      id: "javaException",
+      language: "Java",
+      rule: "异常类（PascalCaseException）",
+      value: `${pascal}Exception`,
+    },
+    {
+      id: "javaEnum",
+      language: "Java",
+      rule: "枚举类（PascalCaseEnum）",
+      value: `${pascal}Enum`,
+    },
+    {
+      id: "javaValidator",
+      language: "Java",
+      rule: "校验器（PascalCaseValidator）",
+      value: `${pascal}Validator`,
+    },
+    {
+      id: "javaAspect",
+      language: "Java",
+      rule: "切面（PascalCaseAspect）",
+      value: `${pascal}Aspect`,
+    },
+    {
+      id: "javaInterceptor",
+      language: "Java",
+      rule: "拦截器（PascalCaseInterceptor）",
+      value: `${pascal}Interceptor`,
+    },
+    {
+      id: "javaFilter",
+      language: "Java",
+      rule: "过滤器（PascalCaseFilter）",
+      value: `${pascal}Filter`,
+    },
+    {
+      id: "javaListener",
+      language: "Java",
+      rule: "监听器（PascalCaseListener）",
+      value: `${pascal}Listener`,
+    },
+    {
+      id: "javaJob",
+      language: "Java",
+      rule: "定时任务（PascalCaseJob）",
+      value: `${pascal}Job`,
+    },
+    {
+      id: "javaFacade",
+      language: "Java",
+      rule: "门面（PascalCaseFacade）",
+      value: `${pascal}Facade`,
+    },
+    {
+      id: "javaClient",
+      language: "Java",
+      rule: "远程客户端（PascalCaseClient）",
+      value: `${pascal}Client`,
+    },
+    {
+      id: "pyModule",
       language: "Python",
-      rule: "变量（snake_case）",
+      rule: "模块（snake_case）",
       value: snake,
     },
     {
-      id: "pyConst",
+      id: "pyController",
       language: "Python",
-      rule: "常量（UPPER_SNAKE_CASE）",
-      value: upperSnake,
+      rule: "控制器（snake_case_controller）",
+      value: `${snake}_controller`,
     },
     {
-      id: "goPrivate",
-      language: "Go",
-      rule: "包内变量（camelCase）",
-      value: camel,
+      id: "pyService",
+      language: "Python",
+      rule: "服务层（snake_case_service）",
+      value: `${snake}_service`,
     },
     {
-      id: "goExport",
-      language: "Go",
-      rule: "导出变量（PascalCase）",
-      value: pascal,
+      id: "pyDao",
+      language: "Python",
+      rule: "DAO（snake_case_dao）",
+      value: `${snake}_dao`,
     },
     {
-      id: "csharpField",
-      language: "C#",
-      rule: "私有字段（_camelCase）",
-      value: `_${camel}`,
+      id: "pyRepository",
+      language: "Python",
+      rule: "仓储层（snake_case_repository）",
+      value: `${snake}_repository`,
     },
     {
-      id: "csharpProp",
-      language: "C#",
-      rule: "属性（PascalCase）",
-      value: pascal,
+      id: "pyModel",
+      language: "Python",
+      rule: "模型（snake_case_model）",
+      value: `${snake}_model`,
     },
     {
-      id: "phpVar",
-      language: "PHP",
-      rule: "变量（$camelCase）",
-      value: `$${camel}`,
+      id: "pySchema",
+      language: "Python",
+      rule: "Schema（snake_case_schema）",
+      value: `${snake}_schema`,
     },
     {
-      id: "rustVar",
-      language: "Rust",
-      rule: "变量（snake_case）",
-      value: snake,
+      id: "pyDto",
+      language: "Python",
+      rule: "DTO（snake_case_dto）",
+      value: `${snake}_dto`,
     },
     {
-      id: "sqlCol",
-      language: "SQL",
-      rule: "字段名（snake_case）",
-      value: snake,
+      id: "pyVo",
+      language: "Python",
+      rule: "VO（snake_case_vo）",
+      value: `${snake}_vo`,
     },
     {
-      id: "cssClass",
-      language: "CSS",
-      rule: "类名（kebab-case）",
-      value: kebab,
+      id: "pyUtils",
+      language: "Python",
+      rule: "工具模块（snake_case_utils）",
+      value: `${snake}_utils`,
     },
     {
-      id: "shellVar",
-      language: "Shell",
-      rule: "环境变量（UPPER_SNAKE_CASE）",
-      value: upperSnake,
+      id: "pyApi",
+      language: "Python",
+      rule: "接口封装（snake_case_api）",
+      value: `${snake}_api`,
     },
     {
-      id: "fileName",
-      language: "文件系统",
-      rule: "文件名（kebab-case）",
-      value: kebab,
+      id: "pyRouter",
+      language: "Python",
+      rule: "路由（snake_case_router）",
+      value: `${snake}_router`,
     },
     {
-      id: "dotName",
-      language: "通用配置",
-      rule: "点分命名（dot.case）",
-      value: dot,
+      id: "pyConfig",
+      language: "Python",
+      rule: "配置（snake_case_config）",
+      value: `${snake}_config`,
+    },
+    {
+      id: "pyConstants",
+      language: "Python",
+      rule: "常量（snake_case_constants）",
+      value: `${snake}_constants`,
+    },
+    {
+      id: "pyValidator",
+      language: "Python",
+      rule: "校验器（snake_case_validator）",
+      value: `${snake}_validator`,
+    },
+    {
+      id: "pyTask",
+      language: "Python",
+      rule: "任务/定时（snake_case_task）",
+      value: `${snake}_task`,
+    },
+    {
+      id: "pyHandler",
+      language: "Python",
+      rule: "处理器（snake_case_handler）",
+      value: `${snake}_handler`,
+    },
+    {
+      id: "pyTest",
+      language: "Python",
+      rule: "测试（test_snake_case）",
+      value: `test_${snake}`,
     },
   ];
 };
 
 const TranslationNaming = () => {
-  const [serviceMode, setServiceMode] = useState("public");
-  const [apiKey, setApiKey] = useState("");
   const [sourceLang, setSourceLang] = useState("zh-CN");
   const [targetLang, setTargetLang] = useState("en");
   const [text, setText] = useState("");
@@ -235,8 +525,6 @@ const TranslationNaming = () => {
     };
   };
 
-
-
   const handleTranslate = async () => {
     if (!text.trim()) {
       setError("请输入要翻译的文本");
@@ -267,7 +555,7 @@ const TranslationNaming = () => {
           ← 返回菜单
         </Link>
       </div>
-      <h1 style={styles.title}>谷歌翻译命名生成器</h1>
+      <h1 style={styles.title}>翻译文件命名生成器</h1>
 
       <section style={styles.card}>
         <h2 style={styles.subtitle}>翻译配置</h2>
@@ -377,7 +665,7 @@ const TranslationNaming = () => {
       </section>
 
       <section style={styles.card}>
-        <h2 style={styles.subtitle}>多语言命名结果</h2>
+        <h2 style={styles.subtitle}>文件命名结果（JS / Java / Python）</h2>
         <div style={styles.resultTable}>
           {rows.map((row) => (
             <div key={row.id} style={styles.resultRow}>
@@ -385,13 +673,14 @@ const TranslationNaming = () => {
                 <strong>{row.language}</strong>
                 <span style={styles.lightText}>{row.rule}</span>
               </div>
-              <code style={styles.resultCode}>{row.value}</code>
-              <button
-                style={styles.copyButton}
-                onClick={() => copyText(row.value)}
-              >
-                复制
-              </button>
+              <code style={styles.resultCode}>
+                <a
+                  style={{ color: "#f80" }}
+                  onClick={() => copyText(row.value)}
+                >
+                  {row.value}
+                </a>
+              </code>
             </div>
           ))}
         </div>
@@ -543,8 +832,6 @@ const styles = {
   },
   resultCode: {
     borderRadius: 8,
-    border: "1px solid #d0d7de",
-    background: "#fff",
     padding: "6px 10px",
     fontSize: 14,
     overflowX: "auto",
