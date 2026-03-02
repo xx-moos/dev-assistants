@@ -10,12 +10,11 @@ const MENU_ITEMS = [
     badge: "已就绪",
   },
   {
-    title: "更多工具",
-    description: "后续功能入口将集中在这里。",
-    to: "/model-test",
-    accent: "linear-gradient(135deg, #0f766e 0%, #5eead4 100%)",
-    badge: "敬请期待",
-    disabled: true,
+    title: "翻译命名",
+    description: "接入谷歌翻译并生成多语言开发命名变量。",
+    to: "/translation-naming",
+    accent: "linear-gradient(135deg, #b45309 0%, #f59e0b 100%)",
+    badge: "已就绪",
   },
 ];
 
@@ -68,9 +67,7 @@ const Home = () => (
       ))}
     </section>
 
-    <footer style={styles.footer}>
-      建议使用桌面浏览器获取最佳体验。
-    </footer>
+
   </div>
 );
 
