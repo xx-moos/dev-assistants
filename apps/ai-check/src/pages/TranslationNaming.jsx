@@ -34,9 +34,9 @@ const toCamelCase = (words) =>
   words.length === 0
     ? ""
     : `${words[0]}${words
-        .slice(1)
-        .map((word) => upperFirst(word))
-        .join("")}`;
+      .slice(1)
+      .map((word) => upperFirst(word))
+      .join("")}`;
 
 const toPascalCase = (words) => words.map((word) => upperFirst(word)).join("");
 const toSnakeCase = (words) => words.join("_");
@@ -235,33 +235,7 @@ const TranslationNaming = () => {
     };
   };
 
-  const translateWithOfficialApi = async () => {
-    if (!apiKey.trim()) {
-      throw new Error("请先填写 Google Cloud API Key");
-    }
-    const params = new URLSearchParams({
-      key: apiKey.trim(),
-      q: text.trim(),
-      target: targetLang || "en",
-      format: "text",
-    });
-    if (sourceLang && sourceLang !== "auto") {
-      params.set("source", sourceLang);
-    }
-    const response = await fetch(
-      `https://translation.googleapis.com/language/translate/v2?${params.toString()}`,
-      { method: "POST" },
-    );
-    if (!response.ok) {
-      throw new Error(`翻译请求失败，HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    const record = data?.data?.translations?.[0];
-    return {
-      translated: decodeHtml(record?.translatedText || ""),
-      detected: record?.detectedSourceLanguage || sourceLang,
-    };
-  };
+
 
   const handleTranslate = async () => {
     if (!text.trim()) {
@@ -274,10 +248,7 @@ const TranslationNaming = () => {
     setHint("");
 
     try {
-      const result =
-        serviceMode === "official"
-          ? await translateWithOfficialApi()
-          : await translateWithPublicApi();
+      const result = await translateWithPublicApi();
       setTranslatedText(result.translated);
       setDetectedSource(result.detected || "");
       setSelectedWords([]);
@@ -300,38 +271,6 @@ const TranslationNaming = () => {
 
       <section style={styles.card}>
         <h2 style={styles.subtitle}>翻译配置</h2>
-
-        <div style={styles.row}>
-          <label style={styles.radioItem}>
-            <input
-              type="radio"
-              checked={serviceMode === "public"}
-              onChange={() => setServiceMode("public")}
-            />
-            公开接口
-          </label>
-          <label style={styles.radioItem}>
-            <input
-              type="radio"
-              checked={serviceMode === "official"}
-              onChange={() => setServiceMode("official")}
-            />
-            官方 API（需 Key）
-          </label>
-        </div>
-
-        {serviceMode === "official" && (
-          <label style={styles.field}>
-            <span style={styles.fieldLabel}>Google Cloud API Key</span>
-            <input
-              style={styles.input}
-              type="password"
-              placeholder="AIza..."
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-            />
-          </label>
-        )}
 
         <div style={styles.grid}>
           <label style={styles.field}>
@@ -383,13 +322,13 @@ const TranslationNaming = () => {
             {loading ? "翻译中..." : "翻译并生成"}
           </button>
           {PRESETS.map((item) => (
-            <button
+            <a
               key={item}
               style={styles.ghostButton}
               onClick={() => selectPreset(item)}
             >
               {item}
-            </button>
+            </a>
           ))}
         </div>
 
@@ -540,11 +479,8 @@ const styles = {
     cursor: "pointer",
   },
   ghostButton: {
-    padding: "8px 12px",
     borderRadius: 8,
-    border: "1px solid #c8d1dc",
-    background: "#f6f8fa",
-    color: "#1f2328",
+    color: "#f60",
     cursor: "pointer",
   },
   copyButton: {

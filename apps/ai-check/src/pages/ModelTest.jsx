@@ -4,7 +4,7 @@ import axios from "axios";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { useReactive, useMemoizedFn } from "ahooks";
+import { useReactive, useMemoizedFn, useLocalStorageState } from "ahooks";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -243,6 +243,13 @@ const ModelLogCard = ({ log, onCopy }) => (
 
 // 主组件
 const ModelTest = () => {
+  const [localUrls, setLocalUrls] = useLocalStorageState(
+    'localUrls',
+    {
+      defaultValue: [],
+    },
+  );
+
   const state = useReactive({
     baseUrl: DEFAULT_CONFIG.baseUrl,
     token: "",
@@ -670,6 +677,13 @@ const ModelTest = () => {
         await runModelTests(model, runners);
       }
       state.summary = `测试完成，共执行 ${targetModels.length * state.selectedTestTypes.length} 项。`;
+      setLocalUrls([
+        ...localUrls,
+        {
+          url: state.baseUrl,
+          token: state.token
+        }
+      ])
     } finally {
       state.running = false;
     }
@@ -778,9 +792,7 @@ const ModelTest = () => {
           >
             {state.loadingModels ? "拉取中..." : "拉取模型列表"}
           </ActionButton>
-          <ActionButton onClick={runTests} disabled={!canRun} primary>
-            {state.running ? "测试中..." : "开始串行测试"}
-          </ActionButton>
+
         </div>
 
         <div style={styles.highlightArea}>
@@ -796,11 +808,6 @@ const ModelTest = () => {
             onCopy={copyText}
             strong
           />
-          <CopyChip
-            label="Token(脱敏)"
-            value={maskToken(state.token)}
-            onCopy={copyText}
-          />
           {mergedModels.map((model) => (
             <CopyChip
               key={model}
@@ -812,7 +819,16 @@ const ModelTest = () => {
         </div>
 
         <p style={styles.summary}>{state.summary || "准备就绪"}</p>
-        {state.copyHint && <p style={styles.copyHint}>{state.copyHint}</p>}
+        <div style={{ height: '60px', overflow: 'auto' }}>
+          {localUrls.map((it,index) =>
+            <p key={index}>
+              <a onClick={() => {
+                state.baseUrl = it.url
+                state.token = it.token
+              }}>{it.url}</a>
+            </p>
+          )}
+        </div>
       </section>
 
       <div style={styles.mainLayout}>
@@ -880,6 +896,10 @@ const ModelTest = () => {
                 清空选择
               </ActionButton>
               <span>已选：{state.selectedTestTypes.length}</span>
+
+              <ActionButton onClick={runTests} disabled={!canRun} primary>
+                {state.running ? "测试中..." : "开始串行测试"}
+              </ActionButton>
             </div>
             <TestTypeSelector
               selectedTestTypes={state.selectedTestTypes}
@@ -926,7 +946,6 @@ const styles = {
     margin: "0 auto",
     padding: 20,
     fontFamily: "'Segoe UI', 'PingFang SC', sans-serif",
-    color: "#1f2328",
   },
   title: { fontSize: 30, marginBottom: 14 },
   navRow: {
