@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useMemoizedFn, useReactive } from "ahooks";
 
 const LANG_OPTIONS = [
   { value: "zh-CN", label: "中文（简体）" },
@@ -459,20 +460,25 @@ const buildNameRows = (words) => {
 };
 
 const TranslationNaming = () => {
-  const [sourceLang, setSourceLang] = useState("zh-CN");
-  const [targetLang, setTargetLang] = useState("en");
-  const [text, setText] = useState("");
-  const [translatedText, setTranslatedText] = useState("");
-  const [detectedSource, setDetectedSource] = useState("");
-  const [selectedWords, setSelectedWords] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [hint, setHint] = useState("");
+  const state = useReactive({
+    sourceLang: "zh-CN",
+    targetLang: "en",
+    text: "",
+    translatedText: "",
+    detectedSource: "",
+    selectedWords: [],
+    loading: false,
+    error: "",
+    hint: "",
+  });
 
-  const words = useMemo(() => splitWords(translatedText), [translatedText]);
+  const words = useMemo(
+    () => splitWords(state.translatedText),
+    [state.translatedText],
+  );
   const activeWords = useMemo(
-    () => (selectedWords.length > 0 ? selectedWords : words),
-    [selectedWords, words],
+    () => (state.selectedWords.length > 0 ? state.selectedWords : words),
+    [state.selectedWords, words],
   );
   const rows = useMemo(() => buildNameRows(activeWords), [activeWords]);
   const groupedRows = useMemo(
@@ -487,38 +493,37 @@ const TranslationNaming = () => {
     [rows],
   );
 
-  const copyText = async (value) => {
+  const copyText = useMemoizedFn(async (value) => {
     try {
       await navigator.clipboard.writeText(value);
-      setHint(`已复制：${value}`);
+      state.hint = `已复制：${value}`;
     } catch {
-      setHint("复制失败：浏览器未授权剪贴板");
+      state.hint = "复制失败：浏览器未授权剪贴板";
     }
-  };
+  });
 
-  const toggleWord = (word) => {
-    setSelectedWords((prev) =>
-      prev.includes(word)
-        ? prev.filter((item) => item !== word)
-        : [...prev, word],
-    );
-  };
+  const toggleWord = useMemoizedFn((word) => {
+    const exists = state.selectedWords.includes(word);
+    state.selectedWords = exists
+      ? state.selectedWords.filter((item) => item !== word)
+      : [...state.selectedWords, word];
+  });
 
-  const selectPreset = (value) => {
-    setText(value);
-    setError("");
-    setHint("");
-  };
+  const selectPreset = useMemoizedFn((value) => {
+    state.text = value;
+    state.error = "";
+    state.hint = "";
+  });
 
-  const translateWithPublicApi = async () => {
-    const sl = sourceLang || "auto";
-    const tl = targetLang || "en";
+  const translateWithPublicApi = useMemoizedFn(async () => {
+    const sl = state.sourceLang || "auto";
+    const tl = state.targetLang || "en";
     const params = new URLSearchParams({
       client: "gtx",
       sl,
       tl,
       dt: "t",
-      q: text.trim(),
+      q: state.text.trim(),
     });
     const response = await fetch(
       `https://translate.googleapis.com/translate_a/single?${params.toString()}`,
@@ -534,30 +539,30 @@ const TranslationNaming = () => {
       translated: decodeHtml(value),
       detected: data?.[2] || sl,
     };
-  };
+  });
 
-  const handleTranslate = async () => {
-    if (!text.trim()) {
-      setError("请输入要翻译的文本");
+  const handleTranslate = useMemoizedFn(async () => {
+    if (!state.text.trim()) {
+      state.error = "请输入要翻译的文本";
       return;
     }
 
-    setLoading(true);
-    setError("");
-    setHint("");
+    state.loading = true;
+    state.error = "";
+    state.hint = "";
 
     try {
       const result = await translateWithPublicApi();
-      setTranslatedText(result.translated);
-      setDetectedSource(result.detected || "");
-      setSelectedWords([]);
-      setHint("翻译完成，可直接勾选词项生成命名");
+      state.translatedText = result.translated;
+      state.detectedSource = result.detected || "";
+      state.selectedWords = [];
+      state.hint = "翻译完成，可直接勾选词项生成命名";
     } catch (err) {
-      setError(err?.message || "翻译失败，请稍后重试");
+      state.error = err?.message || "翻译失败，请稍后重试";
     } finally {
-      setLoading(false);
+      state.loading = false;
     }
-  };
+  });
 
   return (
     <div style={styles.page}>
@@ -576,8 +581,8 @@ const TranslationNaming = () => {
             <span style={styles.fieldLabel}>源语言</span>
             <select
               style={styles.select}
-              value={sourceLang}
-              onChange={(event) => setSourceLang(event.target.value)}
+              value={state.sourceLang}
+              onChange={(event) => (state.sourceLang = event.target.value)}
             >
               {LANG_OPTIONS.map((item) => (
                 <option key={item.value} value={item.value}>
@@ -590,8 +595,8 @@ const TranslationNaming = () => {
             <span style={styles.fieldLabel}>目标语言</span>
             <select
               style={styles.select}
-              value={targetLang}
-              onChange={(event) => setTargetLang(event.target.value)}
+              value={state.targetLang}
+              onChange={(event) => (state.targetLang = event.target.value)}
             >
               {LANG_OPTIONS.map((item) => (
                 <option key={item.value} value={item.value}>
@@ -607,8 +612,8 @@ const TranslationNaming = () => {
           <input
             style={styles.textarea}
             placeholder="例如：用户订单统计"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
+            value={state.text}
+            onChange={(event) => (state.text = event.target.value)}
           />
         </label>
 
@@ -616,9 +621,9 @@ const TranslationNaming = () => {
           <button
             style={styles.primaryButton}
             onClick={handleTranslate}
-            disabled={loading}
+            disabled={state.loading}
           >
-            {loading ? "翻译中..." : "翻译并生成"}
+            {state.loading ? "翻译中..." : "翻译并生成"}
           </button>
           {PRESETS.map((item) => (
             <a
@@ -631,17 +636,17 @@ const TranslationNaming = () => {
           ))}
         </div>
 
-        {error && <p style={styles.error}>{error}</p>}
-        {hint && <p style={styles.hint}>{hint}</p>}
+        {state.error && <p style={styles.error}>{state.error}</p>}
+        {state.hint && <p style={styles.hint}>{state.hint}</p>}
       </section>
 
       <section style={styles.card}>
         <h2 style={styles.subtitle}>翻译结果与词项选择</h2>
         <p style={styles.previewLabel}>
-          译文：<strong>{translatedText || "暂无"}</strong>
-          {detectedSource && (
+          译文：<strong>{state.translatedText || "暂无"}</strong>
+          {state.detectedSource && (
             <span style={styles.lightText}>
-              （检测源语言：{detectedSource}）
+              （检测源语言：{state.detectedSource}）
             </span>
           )}
         </p>
@@ -652,7 +657,7 @@ const TranslationNaming = () => {
             </span>
           ) : (
             words.map((word) => {
-              const active = selectedWords.includes(word);
+              const active = state.selectedWords.includes(word);
               return (
                 <button
                   key={`${word}-${active ? "1" : "0"}`}

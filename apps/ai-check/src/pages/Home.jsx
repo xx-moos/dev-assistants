@@ -10,8 +10,8 @@ const MENU_ITEMS = [
     badge: "已就绪",
   },
   {
-    title: "翻译命名",
-    description: "接入谷歌翻译并生成多语言开发命名变量。",
+    title: "翻译命名文件",
+    description: "接入谷歌翻译并生成多语言开发命名文件或者变量。",
     to: "/translation-naming",
     accent: "linear-gradient(135deg, #b45309 0%, #f59e0b 100%)",
     badge: "已就绪",
@@ -21,11 +21,7 @@ const MENU_ITEMS = [
 const Home = () => (
   <div style={styles.page}>
     <header style={styles.hero}>
-      <div style={styles.heroBadge}>AI Check</div>
-      <h1 style={styles.title}>选择一个入口开始</h1>
-      <p style={styles.subtitle}>
-        使用 Hash 路由导航，所有工具集中在卡片菜单中，快速进入子页面。
-      </p>
+      <div style={styles.heroBadge}>AI Check和开发工具</div>
     </header>
 
     <section style={styles.grid}>
