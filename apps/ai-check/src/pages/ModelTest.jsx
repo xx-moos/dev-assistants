@@ -243,12 +243,9 @@ const ModelLogCard = ({ log, onCopy }) => (
 
 // 主组件
 const ModelTest = () => {
-  const [localUrls, setLocalUrls] = useLocalStorageState(
-    'localUrls',
-    {
-      defaultValue: [],
-    },
-  );
+  const [localUrls, setLocalUrls] = useLocalStorageState("localUrls", {
+    defaultValue: [],
+  });
 
   const state = useReactive({
     baseUrl: DEFAULT_CONFIG.baseUrl,
@@ -677,13 +674,18 @@ const ModelTest = () => {
         await runModelTests(model, runners);
       }
       state.summary = `测试完成，共执行 ${targetModels.length * state.selectedTestTypes.length} 项。`;
-      setLocalUrls([
-        ...localUrls,
-        {
-          url: state.baseUrl,
-          token: state.token
-        }
-      ])
+      const has = localUrls.find((it) => {
+        return it.url === state.baseUrl && it.token === state.token;
+      });
+      if (!has) {
+        setLocalUrls([
+          ...localUrls,
+          {
+            url: state.baseUrl,
+            token: state.token,
+          },
+        ]);
+      }
     } finally {
       state.running = false;
     }
@@ -792,7 +794,6 @@ const ModelTest = () => {
           >
             {state.loadingModels ? "拉取中..." : "拉取模型列表"}
           </ActionButton>
-
         </div>
 
         <div style={styles.highlightArea}>
@@ -819,16 +820,6 @@ const ModelTest = () => {
         </div>
 
         <p style={styles.summary}>{state.summary || "准备就绪"}</p>
-        <div style={{ height: '60px', overflow: 'auto' }}>
-          {localUrls.map((it,index) =>
-            <p key={index}>
-              <a onClick={() => {
-                state.baseUrl = it.url
-                state.token = it.token
-              }}>{it.url}</a>
-            </p>
-          )}
-        </div>
       </section>
 
       <div style={styles.mainLayout}>
@@ -909,6 +900,20 @@ const ModelTest = () => {
           </section>
 
           <section style={styles.card}>
+            <div style={{ height: "80px", overflow: "auto" }}>
+              {localUrls.map((it, index) => (
+                <p key={index}>
+                  <a
+                    onClick={() => {
+                      state.baseUrl = it.url;
+                      state.token = it.token;
+                    }}
+                  >
+                    {it.url}-----{it.token}
+                  </a>
+                </p>
+              ))}
+            </div>
             <h2 style={styles.subtitle}>
               模型请求日志（按模型归并）
               <ActionButton
@@ -925,6 +930,7 @@ const ModelTest = () => {
                 导出日志 JSON
               </ActionButton>
             </h2>
+
             {state.logs.length === 0 ? (
               <div style={styles.empty}>暂无日志。</div>
             ) : (
@@ -947,7 +953,7 @@ const styles = {
     padding: 20,
     fontFamily: "'Segoe UI', 'PingFang SC', sans-serif",
   },
-  title: { fontSize: 30, marginBottom: 14 },
+  title: { fontSize: 18 },
   navRow: {
     display: "flex",
     justifyContent: "flex-end",
@@ -964,7 +970,7 @@ const styles = {
     border: "1px solid #c8d1dc",
     borderRadius: 10,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 8,
     background: "#fff",
     boxShadow: "0 4px 12px rgba(15, 23, 42, 0.04)",
   },
@@ -1034,7 +1040,7 @@ const styles = {
     display: "flex",
     gap: 8,
     flexWrap: "wrap",
-    marginBottom: 10,
+    marginBottom: 8,
     padding: 10,
     borderRadius: 10,
     border: "1px dashed #9eb5cf",
@@ -1044,7 +1050,7 @@ const styles = {
     border: "1px solid #bcd0e8",
     borderRadius: 999,
     background: "#fff",
-    padding: "6px 10px",
+    padding: "0 10px",
     display: "inline-flex",
     alignItems: "center",
     gap: 8,

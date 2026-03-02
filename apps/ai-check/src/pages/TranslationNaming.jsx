@@ -475,6 +475,17 @@ const TranslationNaming = () => {
     [selectedWords, words],
   );
   const rows = useMemo(() => buildNameRows(activeWords), [activeWords]);
+  const groupedRows = useMemo(
+    () =>
+      rows.reduce((acc, row) => {
+        if (!acc[row.language]) {
+          acc[row.language] = [];
+        }
+        acc[row.language].push(row);
+        return acc;
+      }, {}),
+    [rows],
+  );
 
   const copyText = async (value) => {
     try {
@@ -593,7 +604,7 @@ const TranslationNaming = () => {
 
         <label style={styles.field}>
           <span style={styles.fieldLabel}>待翻译文本</span>
-          <textarea
+          <input
             style={styles.textarea}
             placeholder="例如：用户订单统计"
             value={text}
@@ -666,21 +677,28 @@ const TranslationNaming = () => {
 
       <section style={styles.card}>
         <h2 style={styles.subtitle}>文件命名结果（JS / Java / Python）</h2>
-        <div style={styles.resultTable}>
-          {rows.map((row) => (
-            <div key={row.id} style={styles.resultRow}>
-              <div style={styles.resultMeta}>
-                <strong>{row.language}</strong>
-                <span style={styles.lightText}>{row.rule}</span>
+        <div style={styles.resultGrid}>
+          {Object.entries(groupedRows).map(([language, items]) => (
+            <div key={language} style={styles.resultGroup}>
+              <div style={styles.resultGroupHeader}>
+                <strong>{language}</strong>
+                <span style={styles.groupCount}>{items.length}</span>
               </div>
-              <code style={styles.resultCode}>
-                <a
-                  style={{ color: "#f80" }}
-                  onClick={() => copyText(row.value)}
-                >
-                  {row.value}
-                </a>
-              </code>
+              <div style={styles.groupList}>
+                {items.map((row) => (
+                  <div key={row.id} style={styles.groupRow}>
+                    <span style={styles.groupRule}>{row.rule}</span>
+                    <code style={styles.resultCodeCompact}>
+                      <a
+                        style={styles.resultLink}
+                        onClick={() => copyText(row.value)}
+                      >
+                        {row.value}
+                      </a>
+                    </code>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -691,17 +709,12 @@ const TranslationNaming = () => {
 
 const styles = {
   page: {
-    maxWidth: 1240,
     margin: "0 auto",
-    padding: 18,
-    fontFamily: "'Segoe UI', 'PingFang SC', sans-serif",
-    color: "#1f2328",
-    background: "linear-gradient(180deg, #f7faff 0%, #ffffff 28%)",
+    padding: 20,
   },
   navRow: {
     display: "flex",
     justifyContent: "flex-end",
-    marginBottom: 8,
   },
   backLink: {
     textDecoration: "none",
@@ -709,13 +722,13 @@ const styles = {
     fontSize: 14,
     fontWeight: 600,
   },
-  title: { fontSize: 30, marginBottom: 14 },
-  subtitle: { fontSize: 20, margin: "0 0 12px 0" },
+  title: { fontSize: 18, marginBottom: 6 },
+  subtitle: { fontSize: 18, margin: "0 0 12px 0" },
   card: {
     border: "1px solid #c8d1dc",
     borderRadius: 10,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 8,
     background: "#fff",
     boxShadow: "0 4px 12px rgba(15, 23, 42, 0.04)",
   },
@@ -724,7 +737,7 @@ const styles = {
     flexWrap: "wrap",
     gap: 8,
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   grid: {
     display: "grid",
@@ -750,7 +763,6 @@ const styles = {
     background: "#fff",
   },
   textarea: {
-    minHeight: 80,
     resize: "vertical",
     padding: "9px 10px",
     borderRadius: 8,
@@ -810,31 +822,66 @@ const styles = {
     background: "#e8f0ff",
     color: "#0747a6",
   },
-  resultTable: {
+  resultGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 12,
+  },
+  resultGroup: {
+    border: "1px solid #d9e2ec",
+    borderRadius: 10,
+    padding: 12,
+    background: "#fbfdff",
     display: "flex",
     flexDirection: "column",
     gap: 8,
   },
-  resultRow: {
-    display: "grid",
-    gridTemplateColumns: "minmax(220px, 1fr) minmax(220px, 2fr) auto",
-    gap: 10,
+  resultGroupHeader: {
+    display: "flex",
     alignItems: "center",
-    border: "1px solid #d9e2ec",
-    borderRadius: 8,
-    padding: 10,
-    background: "#fbfdff",
+    justifyContent: "space-between",
+    fontSize: 15,
   },
-  resultMeta: {
+  groupCount: {
+    fontSize: 12,
+    color: "#64748b",
+    background: "#eef2ff",
+    borderRadius: 999,
+    padding: "2px 8px",
+  },
+  groupList: {
     display: "flex",
     flexDirection: "column",
-    gap: 4,
+    gap: 6,
   },
-  resultCode: {
+  groupRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: 8,
+    padding: "6px 8px",
     borderRadius: 8,
-    padding: "6px 10px",
-    fontSize: 14,
+    border: "1px solid #e2e8f0",
+    background: "#fff",
+  },
+  groupRule: {
+    fontSize: 13,
+    color: "#475569",
+    lineHeight: 1.3,
+    display: "inline-block",
+    width: "120px",
+  },
+  resultCodeCompact: {
+    borderRadius: 8,
+    padding: "4px 8px",
+    fontSize: 13,
     overflowX: "auto",
+    background: "#f8fafc",
+  },
+  resultLink: {
+    color: "#137fff",
+    cursor: "pointer",
+    fontSize: 18,
   },
 };
 
