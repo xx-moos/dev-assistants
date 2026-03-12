@@ -1063,7 +1063,6 @@ const styles = {
   page: {
     margin: "0 auto",
     padding: 20,
-    maxWidth: 1400,
   },
   headerRow: {
     display: "flex",
