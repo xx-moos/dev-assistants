@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.0",
     "ahooks": "^3.8.6",
+    "antd": "^6.3.2",
     "axios": "^1.7.9",
     "dayjs": "^1.11.19",
     "react": "^18.3.1",

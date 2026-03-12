@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home.jsx";
 import ModelTest from "./pages/ModelTest.jsx";
 import TranslationNaming from "./pages/TranslationNaming.jsx";
+import 'antd/dist/reset.css'
 
 const App = () => (
   <HashRouter>

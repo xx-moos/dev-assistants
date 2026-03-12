@@ -1,13 +1,40 @@
-import React, { useMemo } from "react";
+﻿import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { useReactive, useMemoizedFn, useLocalStorageState } from "ahooks";
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Collapse,
+  Divider,
+  Empty,
+  Input,
+  Row,
+  Col,
+  Space,
+  Spin,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
+import {
+  ArrowLeftOutlined,
+  CopyOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  PlayCircleOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
+const { Title, Text, Paragraph } = Typography;
 
 const TIME_FORMAT = "YYYY-MM-DD HH:mm:ss";
 
@@ -94,14 +121,14 @@ const normalizeAxiosError = (error) => {
   return wrapped;
 };
 
-// 状态样式映射
-const getStatusStyle = (status) => {
-  const styleMap = {
-    成功: styles.statusSuccess,
-    失败: styles.statusFail,
-    部分失败: styles.statusWarn,
+const getStatusColor = (status) => {
+  const colorMap = {
+    成功: "green",
+    失败: "red",
+    部分失败: "orange",
+    进行中: "blue",
   };
-  return styleMap[status] || styles.statusRunning;
+  return colorMap[status] || "blue";
 };
 
 // 子组件：配置输入字段
@@ -112,135 +139,156 @@ const ConfigField = ({
   type = "text",
   placeholder,
   disabled,
-  extra
+  extra,
 }) => (
-  <label style={styles.field}>
-    <span style={styles.fieldLabel}>{label}</span>
-    <input
-      style={styles.input}
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      disabled={disabled}
-    />
-    {extra}
-  </label>
-);
-
-// 子组件：操作按钮
-const ActionButton = ({ onClick, disabled, children, primary = false }) => (
-  <button
-    style={{
-      ...styles.button,
-      ...(primary ? styles.primaryButton : null),
-      ...(disabled ? styles.buttonDisabled : null),
-    }}
-    onClick={onClick}
-    disabled={disabled}
-  >
-    {children}
-  </button>
+  <Space direction="vertical" size={4} style={{ width: "100%" }}>
+    <Text type="secondary">{label}</Text>
+    {type === "password" ? (
+      <Input.Password
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+    ) : (
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+    )}
+    {extra ? <div>{extra}</div> : null}
+  </Space>
 );
 
 // 子组件：可复制标签
-const CopyChip = ({ label, value, onCopy, strong = false }) => (
-  <button
-    style={{ ...styles.copyChip, ...(strong ? styles.copyChipStrong : null) }}
-    onClick={() => onCopy(value, label)}
-    title={`点击复制${label}`}
-    type="button"
-  >
-    <span style={styles.copyChipLabel}>{label}</span>
-    <code style={styles.copyChipValue}>{value}</code>
-  </button>
-);
+const CopyChip = ({ label, value, onCopy, strong = false }) => {
+  const displayValue = value || "-";
+  return (
+    <a onClick={() => onCopy(value, label)}>
+      <Space size={6} style={{ maxWidth: 360 }}>
+        <Text strong={strong}>{label}</Text>
+        <Text code ellipsis style={{ maxWidth: 240 }}>
+          {displayValue}
+        </Text>
+      </Space>
+    </a>
+  );
+};
 
 // 子组件：模型选择器
 const ModelSelector = ({ models, selectedModels, onToggle, disabled }) => (
-  <div style={styles.modelList}>
-    {models.length === 0 && (
-      <div style={styles.empty}>暂无模型，请先拉取。</div>
+  <div style={styles.selectorBox}>
+    {models.length === 0 ? (
+      <Empty
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+        description="暂无模型，请先拉取。"
+      />
+    ) : (
+      <Space size={[8, 8]} wrap>
+        {models.map((model) => (
+          <Checkbox
+            key={model}
+            checked={selectedModels.includes(model)}
+            disabled={disabled}
+            onChange={() => onToggle(model)}
+          >
+            {model}
+          </Checkbox>
+        ))}
+      </Space>
     )}
-    {models.map((model) => (
-      <label key={model} style={styles.modelItem}>
-        <input
-          type="checkbox"
-          checked={selectedModels.includes(model)}
-          disabled={disabled}
-          onChange={() => onToggle(model)}
-        />
-        <span>{model}</span>
-      </label>
-    ))}
   </div>
 );
 
 // 子组件：测试类型选择器
 const TestTypeSelector = ({ selectedTestTypes, onToggle, disabled }) => (
-  <div style={styles.modelList}>
-    {TEST_TYPES.map((item) => (
-      <label key={item.key} style={styles.modelItem}>
-        <input
-          type="checkbox"
+  <div style={styles.selectorBox}>
+    <Space size={[8, 8]} wrap>
+      {TEST_TYPES.map((item) => (
+        <Checkbox
+          key={item.key}
           checked={selectedTestTypes.includes(item.key)}
           disabled={disabled}
           onChange={() => onToggle(item.key)}
-        />
-        <span>{item.label}</span>
-      </label>
-    ))}
+        >
+          {item.label}
+        </Checkbox>
+      ))}
+    </Space>
   </div>
 );
 
 // 子组件：单个测试用例
 const CaseItem = ({ item }) => (
-  <div style={styles.caseItem}>
-    <div style={styles.caseMeta}>
-      <strong>{item.testType}</strong>
-      <span
-        style={item.status === "成功" ? styles.textSuccess : styles.textFail}
+  <Card size="small" style={styles.caseCard}>
+    <Space size={[8, 8]} wrap style={{ width: "100%" }}>
+      <Text strong>{item.testType}</Text>
+      <Tag color={getStatusColor(item.status)}>{item.status}</Tag>
+      <Text type="secondary">{item.startedAt}</Text>
+      <Tag>{item.durationMs}ms</Tag>
+    </Space>
+    {item.preview ? (
+      <Paragraph
+        style={{ marginTop: 8 }}
+        ellipsis={{ rows: 2, expandable: true, symbol: "展开" }}
       >
-        {item.status}
-      </span>
-      <span>{item.startedAt}</span>
-      <span>{item.durationMs}ms</span>
-    </div>
-    {item.preview && <div style={styles.preview}>{item.preview}</div>}
-    <details>
-      <summary>请求过程</summary>
-      <summary>请求</summary>
-      <pre style={styles.pre}>{JSON.stringify(item.request, null, 2)}</pre>
-      <summary>响应</summary>
-      <pre style={styles.pre}>{JSON.stringify(item.response, null, 2)}</pre>
-    </details>
-  </div>
+        {item.preview}
+      </Paragraph>
+    ) : null}
+    <Collapse
+      size="small"
+      items={[
+        {
+          key: "request",
+          label: "请求",
+          children: (
+            <pre style={styles.pre}>
+              {JSON.stringify(item.request, null, 2)}
+            </pre>
+          ),
+        },
+        {
+          key: "response",
+          label: "响应",
+          children: (
+            <pre style={styles.pre}>
+              {JSON.stringify(item.response, null, 2)}
+            </pre>
+          ),
+        },
+      ]}
+    />
+  </Card>
 );
 
 // 子组件：模型日志卡片
 const ModelLogCard = ({ log, onCopy }) => (
-  <article style={styles.logCard}>
-    <header style={styles.logHeader}>
-      <div style={styles.logHeaderMain}>
+  <Card
+    size="small"
+    style={styles.logCard}
+    title={
+      <Space size={8} wrap>
         <CopyChip label="模型" value={log.model} onCopy={onCopy} strong />
-        <span style={{ ...styles.statusTag, ...getStatusStyle(log.status) }}>
-          {log.status}
-        </span>
-      </div>
-      <div style={styles.logMetaRow}>
-        <span>开始：{log.startedAt}</span>
-        <span>结束：{log.endedAt || "-"}</span>
-        <span>耗时：{log.totalDurationMs}ms</span>
-        <span>成功：{log.successCount}</span>
-        <span>失败：{log.failCount}</span>
-      </div>
-    </header>
-    <div style={styles.caseList}>
+        <Tag color={getStatusColor(log.status)}>{log.status}</Tag>
+      </Space>
+    }
+  >
+    <Space size={[12, 8]} wrap style={styles.metaRow}>
+      <Text type="secondary">开始：{log.startedAt}</Text>
+      <Text type="secondary">结束：{log.endedAt || "-"}</Text>
+      <Text type="secondary">耗时：{log.totalDurationMs}ms</Text>
+      <Text type="secondary">成功：{log.successCount}</Text>
+      <Text type="secondary">失败：{log.failCount}</Text>
+    </Space>
+    <Divider style={{ margin: "12px 0" }} />
+    <Space direction="vertical" size={8} style={{ width: "100%" }}>
       {log.cases.map((item) => (
         <CaseItem key={item.id} item={item} />
       ))}
-    </div>
-  </article>
+    </Space>
+  </Card>
 );
 
 // 主组件
@@ -744,213 +792,269 @@ const ModelTest = () => {
 
   return (
     <div style={styles.page}>
-      <div style={styles.navRow}>
-        <Link style={styles.backLink} to="/">
-          ← 返回菜单
+      <Space align="center" style={styles.headerRow}>
+        <Link to="/" style={styles.backLink}>
+          <ArrowLeftOutlined /> 返回菜单
         </Link>
-      </div>
-      <h1 style={styles.title}>模型测试</h1>
+        <Title level={3} style={{ margin: 0 }}>
+          模型测试
+        </Title>
+      </Space>
 
-      <section style={styles.card}>
-        <h2 style={styles.subtitle}>连接配置</h2>
-        <div style={styles.grid}>
-          <ConfigField
-            label="API Base URL"
-            value={state.baseUrl}
-            onChange={(v) => (state.baseUrl = v)}
-            placeholder="https://api.openai.com/v1"
-            extra={
-              <>API 根地址（自动推导）{apiRoot}</>
-            }
-          />
-          <ConfigField
-            label="API Token"
-            value={state.token}
-            onChange={(v) => (state.token = v)}
-            type="password"
-            placeholder="sk-..."
-          />
-          <ConfigField
-            label="名称"
-            value={state.name}
-            onChange={(v) => (state.name = v)}
-            placeholder="例如：OpenAI 上海"
-          />
-        </div>
+      <Spin spinning={state.running} tip="正在执行测试...">
+        <Card title="连接配置" style={styles.card}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={8}>
+              <ConfigField
+                label="API Base URL"
+                value={state.baseUrl}
+                onChange={(v) => (state.baseUrl = v)}
+                placeholder="https://api.openai.com/v1"
+                extra={
+                  <Text type="secondary">
+                    API 根地址（自动推导） <Text code>{apiRoot || "-"}</Text>
+                  </Text>
+                }
+              />
+            </Col>
+            <Col xs={24} md={8}>
+              <ConfigField
+                label="API Token"
+                value={state.token}
+                onChange={(v) => (state.token = v)}
+                type="password"
+                placeholder="sk-..."
+              />
+            </Col>
+            <Col xs={24} md={8}>
+              <ConfigField
+                label="名称"
+                value={state.name}
+                onChange={(v) => (state.name = v)}
+                placeholder="例如：OpenAI 上海"
+              />
+            </Col>
+          </Row>
 
-        <div style={styles.row}>
-          <ActionButton
-            onClick={fetchModels}
-            disabled={
-              state.loadingModels || !state.token.trim() || state.running
-            }
-          >
-            {state.loadingModels ? "拉取中..." : "拉取模型列表"}
-          </ActionButton>
-        </div>
+          <Space style={{ marginTop: 16 }} wrap>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={fetchModels}
+              loading={state.loadingModels}
+              disabled={!state.token.trim() || state.running}
+            >
+              拉取模型列表
+            </Button>
+          </Space>
 
-        <div style={styles.highlightArea}>
-          <CopyChip
-            label="名称"
-            value={state.name.trim()}
-            onCopy={copyText}
-            strong
-          />
-          <CopyChip
-            label="Url"
-            value={state.baseUrl.trim()}
-            onCopy={copyText}
-            strong
-          />
-          <CopyChip
-            label="API Token"
-            value={state.token.trim()}
-            onCopy={copyText}
-            strong
-          />
-          {mergedModels.map((model) => (
+          <Divider style={{ margin: "16px 0" }} />
+
+          <Space size={[8, 8]} wrap>
             <CopyChip
-              key={model}
-              label="模型"
-              value={model}
+              label="名称"
+              value={state.name.trim()}
               onCopy={copyText}
+              strong
             />
-          ))}
-        </div>
-
-        <p style={styles.summary}>{state.summary || "准备就绪"}</p>
-      </section>
-
-      <div style={styles.mainLayout}>
-        <div style={styles.leftPane}>
-          <section style={styles.card}>
-            <h2 style={styles.subtitle}>模型选择</h2>
-            <div style={styles.field}>
-              <span style={styles.fieldLabel}>
-                补充模型（逗号分割，可多填）
-              </span>
-              <input
-                style={styles.input}
-                value={state.manualModelsText}
-                onChange={(e) => (state.manualModelsText = e.target.value)}
-                placeholder="例如：gpt-4o,gpt-4.1, o3-mini"
-                disabled={state.running}
-              />
-              <span style={styles.fieldLabel}>
-                会与勾选模型合并去重后执行，当前补充 {manualModels.length}{" "}
-                个，合计执行 {mergedModels.length} 个。
-              </span>
-            </div>
-            <div style={styles.row}>
-              <ActionButton
-                onClick={selectAllModels}
-                disabled={state.models.length === 0 || state.running}
-              >
-                全选
-              </ActionButton>
-              <ActionButton
-                onClick={clearModelSelection}
-                disabled={state.selectedModels.length === 0 || state.running}
-              >
-                清空选择
-              </ActionButton>
-              <span>勾选：{state.selectedModels.length}</span>
-              <span>总计：{mergedModels.length}</span>
-            </div>
-            <ModelSelector
-              models={state.models}
-              selectedModels={state.selectedModels}
-              onToggle={toggleModel}
-              disabled={state.running}
+            <CopyChip
+              label="Url"
+              value={state.baseUrl.trim()}
+              onCopy={copyText}
+              strong
             />
-          </section>
-        </div>
-
-        <div style={styles.rightPane}>
-          <section style={{ ...styles.card, display: 'flex', gap: '16px' }}>
-            <div style={{ width: '37%' }}>
-              <h2 style={styles.subtitle}>测试类型选择</h2>
-              <div style={styles.row}>
-                <ActionButton
-                  onClick={selectAllTestTypes}
-                  disabled={
-                    state.selectedTestTypes.length === TEST_TYPES.length ||
-                    state.running
-                  }
-                >
-                  全选
-                </ActionButton>
-                <ActionButton
-                  onClick={clearTestTypes}
-                  disabled={state.selectedTestTypes.length === 0 || state.running}
-                >
-                  清空选择
-                </ActionButton>
-                <span>已选：{state.selectedTestTypes.length}</span>
-
-                <ActionButton onClick={runTests} disabled={!canRun} primary>
-                  {state.running ? "测试中..." : "开始串行测试"}
-                </ActionButton>
-              </div>
-              <TestTypeSelector
-                selectedTestTypes={state.selectedTestTypes}
-                onToggle={toggleTestType}
-                disabled={state.running}
+            <CopyChip
+              label="API Token"
+              value={state.token.trim()}
+              onCopy={copyText}
+              strong
+            />
+            {mergedModels.map((model) => (
+              <CopyChip
+                key={model}
+                label="模型"
+                value={model}
+                onCopy={copyText}
               />
-            </div>
+            ))}
+          </Space>
 
-            <div style={{ flex: 1 }}>
-              <h2 style={styles.subtitle}>历史连接</h2>
-              <div style={{ height: "120px", overflowY: "auto" }}>
-                {localUrls.map((it, index) => (
-                  <span key={index} style={{ border: '1px solid #d0d7de', borderRadius: '8px', margin: '4px', padding: '0 4px' }}>
-                    <a style={{ textDecoration: 'none', color: '#0969da', fontSize: '14px', cursor: 'pointer' }}
-                      onClick={() => {
-                        state.name = it.name;
-                        state.baseUrl = it.url;
-                        state.token = it.token;
-                      }}
+          <Space direction="vertical" style={{ marginTop: 16, width: "100%" }}>
+            {state.copyHint ? (
+              <Alert
+                type={state.copyHint.includes("失败") ? "warning" : "success"}
+                showIcon
+                message={state.copyHint}
+              />
+            ) : null}
+          </Space>
+        </Card>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={8}>
+            <Card title="模型选择" style={styles.card}>
+              <Space
+                direction="vertical"
+                size="middle"
+                style={{ width: "100%" }}
+              >
+                <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                  <Text type="secondary">补充模型（逗号分割，可多填）</Text>
+                  <Input
+                    value={state.manualModelsText}
+                    onChange={(e) => (state.manualModelsText = e.target.value)}
+                    placeholder="例如：gpt-4o,gpt-4.1, o3-mini"
+                    disabled={state.running}
+                  />
+                  <Text type="secondary">
+                    会与勾选模型合并去重后执行，当前补充 {manualModels.length}{" "}
+                    个，合计执行 {mergedModels.length} 个。
+                  </Text>
+                </Space>
+
+                <Space wrap>
+                  <Button
+                    onClick={selectAllModels}
+                    disabled={state.models.length === 0 || state.running}
+                  >
+                    全选
+                  </Button>
+                  <Button
+                    onClick={clearModelSelection}
+                    disabled={
+                      state.selectedModels.length === 0 || state.running
+                    }
+                  >
+                    清空选择
+                  </Button>
+                  <Tag color="blue">勾选：{state.selectedModels.length}</Tag>
+                  <Tag>总计：{mergedModels.length}</Tag>
+                </Space>
+
+                <ModelSelector
+                  models={state.models}
+                  selectedModels={state.selectedModels}
+                  onToggle={toggleModel}
+                  disabled={state.running}
+                />
+              </Space>
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={16}>
+            <Card title="测试与历史" style={styles.card}>
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={10}>
+                  <Title level={5} style={styles.sectionTitle}>
+                    测试类型选择
+                  </Title>
+                  <Space wrap>
+                    <Button
+                      onClick={selectAllTestTypes}
+                      disabled={
+                        state.selectedTestTypes.length === TEST_TYPES.length ||
+                        state.running
+                      }
                     >
-                      {it.name} - {it.url}
-                    </a>
-                  </span>
-                ))}
-              </div>
-            </div>
+                      全选
+                    </Button>
+                    <Button
+                      onClick={clearTestTypes}
+                      disabled={
+                        state.selectedTestTypes.length === 0 || state.running
+                      }
+                    >
+                      清空选择
+                    </Button>
+                    <Tag color="blue">
+                      已选：{state.selectedTestTypes.length}
+                    </Tag>
+                    <Button
+                      type="primary"
+                      icon={<PlayCircleOutlined />}
+                      onClick={runTests}
+                      disabled={!canRun}
+                      loading={state.running}
+                    >
+                      开始串行测试
+                    </Button>
+                  </Space>
 
-          </section>
+                  <div style={{ marginTop: 12 }}>
+                    <TestTypeSelector
+                      selectedTestTypes={state.selectedTestTypes}
+                      onToggle={toggleTestType}
+                      disabled={state.running}
+                    />
+                  </div>
+                </Col>
 
-          <section style={styles.card}>
+                <Col xs={24} md={14}>
+                  <Title level={5} style={styles.sectionTitle}>
+                    历史连接
+                  </Title>
+                  <div style={styles.historyBox}>
+                    {localUrls.length === 0 ? (
+                      <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="暂无历史连接"
+                      />
+                    ) : (
+                      <Space size={[8, 8]} wrap>
+                        {localUrls.map((it, index) => (
+                          <Button
+                            key={`${it.url}-${index}`}
+                            size="small"
+                            onClick={() => {
+                              state.name = it.name;
+                              state.baseUrl = it.url;
+                              state.token = it.token;
+                            }}
+                          >
+                            {it.name} - {it.url}
+                          </Button>
+                        ))}
+                      </Space>
+                    )}
+                  </div>
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </Row>
 
-            <h2 style={styles.subtitle}>
-              模型请求日志（按模型归并）
-              <ActionButton
+        <Card
+          title="模型请求日志（按模型归并）"
+          style={styles.card}
+          extra={
+            <Space>
+              <Button
+                icon={<DeleteOutlined />}
                 onClick={clearLogs}
                 disabled={state.running || state.logs.length === 0}
               >
                 清空日志
-              </ActionButton>
-              &nbsp;
-              <ActionButton
+              </Button>
+              <Button
+                icon={<DownloadOutlined />}
                 onClick={exportLogs}
                 disabled={state.logs.length === 0}
               >
                 导出日志 JSON
-              </ActionButton>
-            </h2>
-
-            {state.logs.length === 0 ? (
-              <div style={styles.empty}>暂无日志。</div>
-            ) : (
-              <div style={styles.logList}>
-                {state.logs.map((log) => (
-                  <ModelLogCard key={log.id} log={log} onCopy={copyText} />
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      </div>
+              </Button>
+            </Space>
+          }
+        >
+          {state.logs.length === 0 ? (
+            <Empty description="暂无日志。" />
+          ) : (
+            <Space direction="vertical" size={12} style={{ width: "100%" }}>
+              {state.logs.map((log) => (
+                <ModelLogCard key={log.id} log={log} onCopy={copyText} />
+              ))}
+            </Space>
+          )}
+        </Card>
+      </Spin>
     </div>
   );
 };
@@ -959,234 +1063,59 @@ const styles = {
   page: {
     margin: "0 auto",
     padding: 20,
-    fontFamily: "'Segoe UI', 'PingFang SC', sans-serif",
+    maxWidth: 1400,
   },
-  title: { fontSize: 18 },
-  navRow: {
+  headerRow: {
     display: "flex",
-    justifyContent: "flex-end",
-    marginBottom: 8,
+    gap: 12,
+    alignItems: "center",
+    marginBottom: 16,
   },
   backLink: {
-    textDecoration: "none",
-    color: "#0969da",
+    color: "#1677ff",
     fontSize: 14,
-    fontWeight: 600,
   },
-  subtitle: { fontSize: 20, margin: "0 0 12px 0" },
   card: {
-    border: "1px solid #c8d1dc",
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 8,
-    background: "#fff",
-    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.04)",
+    borderRadius: 12,
   },
-  mainLayout: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 16,
-    alignItems: "flex-start",
+  sectionTitle: {
+    margin: "0 0 8px 0",
   },
-  leftPane: {
-    // flex: "1 1 440px",
-    // minWidth: 320,
-    width: "32%",
-  },
-  rightPane: {
-    flex: "1.25 1 520px",
-    minWidth: 360,
-  },
-  row: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: 12,
-    marginBottom: 12,
-  },
-  field: { display: "flex", flexDirection: "column", gap: 6 },
-  fieldLabel: { fontSize: 14, color: "#4b5563" },
-  input: {
-    padding: "9px 10px",
+  selectorBox: {
+    border: "1px solid #f0f0f0",
     borderRadius: 8,
-    border: "1px solid #ccd6e1",
-    fontSize: 14,
-    outline: "none",
-  },
-  button: {
-    padding: "8px 13px",
-    borderRadius: 8,
-    border: "1px solid #c8d1dc",
-    background: "#f6f8fa",
-    cursor: "pointer",
-    color: "#1f2328",
-  },
-  primaryButton: {
-    background: "#0969da",
-    border: "1px solid #0969da",
-    color: "#fff",
-    fontWeight: 600,
-  },
-  buttonDisabled: { opacity: 0.65, cursor: "not-allowed" },
-  code: {
-    background: "#f5f8fc",
-    border: "1px solid #d3dce7",
-    borderRadius: 8,
-    padding: "8px 10px",
-    fontSize: 14,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  highlightArea: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-    marginBottom: 8,
-    padding: 10,
-    borderRadius: 10,
-    border: "1px dashed #9eb5cf",
-    background: "linear-gradient(90deg, #f2f8ff 0%, #f8fbff 100%)",
-  },
-  copyChip: {
-    border: "1px solid #bcd0e8",
-    borderRadius: 999,
-    background: "#fff",
-    padding: "0 10px",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    cursor: "pointer",
-    color: "#183153",
-    maxWidth: "100%",
-  },
-  copyChipStrong: {
-    borderColor: "#0969da",
-    boxShadow: "0 0 0 2px rgba(9, 105, 218, 0.12)",
-  },
-  copyChipLabel: { fontSize: 14, fontWeight: 700, color: "#0f3c78" },
-  copyChipValue: {
-    fontSize: 14,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    maxWidth: 280,
-  },
-  summary: { margin: 0, fontSize: 14, color: "#374151" },
-  copyHint: { margin: "6px 0 0 0", color: "#0f5132", fontSize: 14 },
-  modelList: {
-    maxHeight: 220,
+    padding: 12,
+    maxHeight: 260,
     overflow: "auto",
-    border: "1px solid #d0d7de",
-    borderRadius: 8,
-    padding: 8,
-    display: "flex",
-    flexWrap: "wrap",
-    alignContent: "flex-start",
-    gap: 8,
+    background: "#fafafa",
   },
-  modelItem: {
-    display: "inline-flex",
-    gap: 6,
-    alignItems: "center",
-    padding: "2px 8px",
-    borderRadius: 999,
-    background: "#f8fbff",
-    border: "1px solid #d9e2ec",
-    whiteSpace: "nowrap",
-  },
-  logList: { display: "flex", flexDirection: "column", gap: 8 },
-  logCard: {
-    border: "1px solid #d0d7de",
+  historyBox: {
+    border: "1px dashed #e5e7eb",
     borderRadius: 10,
-    overflow: "hidden",
-    background: "#fafcff",
+    padding: 12,
+    minHeight: 120,
+    background: "#fcfcfd",
   },
-  logHeader: {
-    padding: 9,
-    borderBottom: "1px solid #e5edf5",
-    background: "#f4f8ff",
+  logCard: {
+    borderRadius: 10,
   },
-  logHeaderMain: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
-    flexWrap: "wrap",
+  metaRow: {
+    marginTop: 4,
   },
-  logMetaRow: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-    fontSize: 13,
-    color: "#4b5563",
-  },
-  statusTag: {
-    fontSize: 13,
-    fontWeight: 700,
-    padding: "2px 8px",
-    borderRadius: 999,
-    border: "1px solid transparent",
-  },
-  statusSuccess: {
-    color: "#116329",
-    background: "#dcffe4",
-    borderColor: "#9addaf",
-  },
-  statusFail: {
-    color: "#a40e26",
-    background: "#ffe5ea",
-    borderColor: "#ffb5c0",
-  },
-  statusWarn: {
-    color: "#9a6700",
-    background: "#fff4d5",
-    borderColor: "#ffd880",
-  },
-  statusRunning: {
-    color: "#0550ae",
-    background: "#ddeeff",
-    borderColor: "#9cc5ff",
-  },
-  caseList: { display: "flex", flexDirection: "column", gap: 8, padding: 9 },
-  caseItem: {
-    border: "1px solid #dbe5ef",
+  caseCard: {
     borderRadius: 8,
     background: "#fff",
-    padding: 8,
-  },
-  caseMeta: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  textSuccess: { color: "#1a7f37", fontWeight: 700 },
-  textFail: { color: "#d1242f", fontWeight: 700 },
-  preview: {
-    fontSize: 13,
-    marginBottom: 6,
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
   },
   pre: {
-    marginTop: 6,
-    maxHeight: 220,
+    margin: 0,
+    maxHeight: 240,
     overflow: "auto",
-    background: "#fff",
-    border: "1px solid #d0d7de",
-    borderRadius: 6,
-    padding: 8,
+    background: "#0b1020",
+    color: "#e6edf3",
+    borderRadius: 8,
+    padding: 12,
     fontSize: 12,
   },
-  empty: { color: "#57606a", fontSize: 14 },
 };
 
 export default ModelTest;
