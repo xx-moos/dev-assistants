@@ -14,10 +14,10 @@ const TIME_FORMAT = "YYYY-MM-DD HH:mm:ss";
 // 默认配置
 const DEFAULT_CONFIG = {
   baseUrl: "",
-  textPrompt: "你好",
+  textPrompt: "一句话回答, 0.111和0.90谁大？",
   imageUrl:
     "https://gips1.baidu.com/it/u=1746086795,2510875842&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024",
-  imagePrompt: "请简要描述这张图片的主要内容。",
+  imagePrompt: "请简要描述这张图片的主要内容。比如，这张图片是一只狗。",
 };
 
 // 测试类型配置
@@ -112,6 +112,7 @@ const ConfigField = ({
   type = "text",
   placeholder,
   disabled,
+  extra
 }) => (
   <label style={styles.field}>
     <span style={styles.fieldLabel}>{label}</span>
@@ -123,6 +124,7 @@ const ConfigField = ({
       placeholder={placeholder}
       disabled={disabled}
     />
+    {extra}
   </label>
 );
 
@@ -248,6 +250,7 @@ const ModelTest = () => {
   });
 
   const state = useReactive({
+    name: "",
     baseUrl: DEFAULT_CONFIG.baseUrl,
     token: "",
     textPrompt: DEFAULT_CONFIG.textPrompt,
@@ -681,6 +684,7 @@ const ModelTest = () => {
         setLocalUrls([
           ...localUrls,
           {
+            name: state.name,
             url: state.baseUrl,
             token: state.token,
           },
@@ -755,6 +759,9 @@ const ModelTest = () => {
             value={state.baseUrl}
             onChange={(v) => (state.baseUrl = v)}
             placeholder="https://api.openai.com/v1"
+            extra={
+              <>API 根地址（自动推导）{apiRoot}</>
+            }
           />
           <ConfigField
             label="API Token"
@@ -764,25 +771,11 @@ const ModelTest = () => {
             placeholder="sk-..."
           />
           <ConfigField
-            label="文本测试提示词"
-            value={state.textPrompt}
-            onChange={(v) => (state.textPrompt = v)}
+            label="名称"
+            value={state.name}
+            onChange={(v) => (state.name = v)}
+            placeholder="例如：OpenAI 上海"
           />
-          <ConfigField
-            label="图像测试提示词"
-            value={state.imagePrompt}
-            onChange={(v) => (state.imagePrompt = v)}
-          />
-          <ConfigField
-            label="图像 URL"
-            value={state.imageUrl}
-            onChange={(v) => (state.imageUrl = v)}
-            placeholder="https://..."
-          />
-          <div style={styles.field}>
-            <span style={styles.fieldLabel}>API 根地址（自动推导）</span>
-            <code style={styles.code}>{apiRoot}</code>
-          </div>
         </div>
 
         <div style={styles.row}>
@@ -797,6 +790,12 @@ const ModelTest = () => {
         </div>
 
         <div style={styles.highlightArea}>
+          <CopyChip
+            label="名称"
+            value={state.name.trim()}
+            onCopy={copyText}
+            strong
+          />
           <CopyChip
             label="Url"
             value={state.baseUrl.trim()}
@@ -868,52 +867,61 @@ const ModelTest = () => {
         </div>
 
         <div style={styles.rightPane}>
-          <section style={styles.card}>
-            <h2 style={styles.subtitle}>测试类型选择</h2>
-            <div style={styles.row}>
-              <ActionButton
-                onClick={selectAllTestTypes}
-                disabled={
-                  state.selectedTestTypes.length === TEST_TYPES.length ||
-                  state.running
-                }
-              >
-                全选
-              </ActionButton>
-              <ActionButton
-                onClick={clearTestTypes}
-                disabled={state.selectedTestTypes.length === 0 || state.running}
-              >
-                清空选择
-              </ActionButton>
-              <span>已选：{state.selectedTestTypes.length}</span>
+          <section style={{ ...styles.card, display: 'flex', gap: '16px' }}>
+            <div style={{ width: '37%' }}>
+              <h2 style={styles.subtitle}>测试类型选择</h2>
+              <div style={styles.row}>
+                <ActionButton
+                  onClick={selectAllTestTypes}
+                  disabled={
+                    state.selectedTestTypes.length === TEST_TYPES.length ||
+                    state.running
+                  }
+                >
+                  全选
+                </ActionButton>
+                <ActionButton
+                  onClick={clearTestTypes}
+                  disabled={state.selectedTestTypes.length === 0 || state.running}
+                >
+                  清空选择
+                </ActionButton>
+                <span>已选：{state.selectedTestTypes.length}</span>
 
-              <ActionButton onClick={runTests} disabled={!canRun} primary>
-                {state.running ? "测试中..." : "开始串行测试"}
-              </ActionButton>
+                <ActionButton onClick={runTests} disabled={!canRun} primary>
+                  {state.running ? "测试中..." : "开始串行测试"}
+                </ActionButton>
+              </div>
+              <TestTypeSelector
+                selectedTestTypes={state.selectedTestTypes}
+                onToggle={toggleTestType}
+                disabled={state.running}
+              />
             </div>
-            <TestTypeSelector
-              selectedTestTypes={state.selectedTestTypes}
-              onToggle={toggleTestType}
-              disabled={state.running}
-            />
+
+            <div style={{ flex: 1 }}>
+              <h2 style={styles.subtitle}>历史连接</h2>
+              <div style={{ height: "120px", overflowY: "auto" }}>
+                {localUrls.map((it, index) => (
+                  <span key={index} style={{ border: '1px solid #d0d7de', borderRadius: '8px', margin: '4px', padding: '0 4px' }}>
+                    <a style={{ textDecoration: 'none', color: '#0969da', fontSize: '14px', cursor: 'pointer' }}
+                      onClick={() => {
+                        state.name = it.name;
+                        state.baseUrl = it.url;
+                        state.token = it.token;
+                      }}
+                    >
+                      {it.name} - {it.url}
+                    </a>
+                  </span>
+                ))}
+              </div>
+            </div>
+
           </section>
 
           <section style={styles.card}>
-            <div style={{ height: "80px", overflow: "auto" }}>
-              {localUrls.map((it, index) => (
-                <p key={index}>
-                  <a
-                    onClick={() => {
-                      state.baseUrl = it.url;
-                      state.token = it.token;
-                    }}
-                  >
-                    {it.url}-----{it.token}
-                  </a>
-                </p>
-              ))}
-            </div>
+
             <h2 style={styles.subtitle}>
               模型请求日志（按模型归并）
               <ActionButton
