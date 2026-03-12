@@ -178,19 +178,18 @@ const ConfigField = ({
   disabled,
   extra,
 }) => (
-  <div style={{ marginBottom: 16 }}>
-    <div style={{ marginBottom: 6 }}>
-      <Text strong style={{ color: "#262626" }}>
-        {label}
-      </Text>
-    </div>
-    {type === "password" ? (
-      <Input.Password
+  <>
+    <label strong style={{ color: "#262626" }}>
+      {label}
+    </label>
+    {type === "textarea" ? (
+      <Input.TextArea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
         size="large"
+        rows={3}
       />
     ) : (
       <Input
@@ -202,7 +201,7 @@ const ConfigField = ({
       />
     )}
     {extra && <div style={{ marginTop: 6, fontSize: 13 }}>{extra}</div>}
-  </div>
+  </>
 );
 
 // 子组件：可复制标签
@@ -451,6 +450,7 @@ const ModelTest = () => {
     running: false,
     logs: [],
     summary: "",
+    remark: "",
     copyHint: "", // 保持原状：内部状态变量不动，但使用 message 提示用户
   });
 
@@ -872,6 +872,7 @@ const ModelTest = () => {
             name: state.name || "未命名配置",
             url: state.baseUrl,
             token: state.token,
+            remark: state.remark,
           },
         ]);
       }
@@ -973,6 +974,7 @@ const ModelTest = () => {
                     state.name = item.name;
                     state.baseUrl = item.url;
                     state.token = item.token;
+                    state.remark = item.remark || "";
                     message.success(`已加载配置：${item.name}`);
                   }
                 }}
@@ -985,7 +987,7 @@ const ModelTest = () => {
           }
         >
           <Row gutter={24}>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={4}>
               <ConfigField
                 label="API Base URL"
                 value={state.baseUrl}
@@ -998,16 +1000,15 @@ const ModelTest = () => {
                 }
               />
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={4}>
               <ConfigField
                 label="API Token"
                 value={state.token}
                 onChange={(v) => (state.token = v)}
-                type="password"
                 placeholder="sk-..."
               />
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={4}>
               <ConfigField
                 label="配置名称"
                 value={state.name}
@@ -1015,8 +1016,31 @@ const ModelTest = () => {
                 placeholder="例如：OpenAI 生产环境"
               />
             </Col>
+            {/* 新增备注列 */}
+            <Col xs={24} md={24}>
+              <ConfigField
+                label="备注"
+                value={state.remark}
+                type="textarea"
+                onChange={(v) => (state.remark = v)}
+                placeholder="例如：用于测试 GPT-4o 系列"
+              />
+              <Button
+                type="primary"
+                onClick={() => {
+                  const newLocalData = localUrls.map((it, ind) => {
+                    if (it.url === state.baseUrl && it.token === state.token) {
+                      it.remark = state.remark;
+                    }
+                    return it;
+                  });
+                  setLocalUrls(newLocalData);
+                }}
+              >
+                保存
+              </Button>
+            </Col>
           </Row>
-
           <Space wrap style={{ marginTop: 16 }}>
             <Button
               type="primary"
