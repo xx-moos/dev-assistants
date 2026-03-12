@@ -179,9 +179,7 @@ const ConfigField = ({
   extra,
 }) => (
   <>
-    <label strong style={{ color: "#262626" }}>
-      {label}
-    </label>
+    <label style={{ color: "#1f1f1f", fontWeight: 500 }}>{label}</label>
     {type === "textarea" ? (
       <Input.TextArea
         value={value}
@@ -200,7 +198,7 @@ const ConfigField = ({
         size="large"
       />
     )}
-    {extra && <div style={{ marginTop: 6, fontSize: 13 }}>{extra}</div>}
+    {extra && <div style={{ marginTop: 6, fontSize: 12 }}>{extra}</div>}
   </>
 );
 
@@ -211,11 +209,11 @@ const CopyChip = ({ label, value, onCopy, strong = false }) => {
     <div
       onClick={() => onCopy(value, label)}
       style={styles.copyChip}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "#e6f4ff")}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "#eef2ff")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "#f5f5f5")}
       title="点击复制"
     >
-      <Text type="secondary" strong={strong} style={{ fontSize: 13 }}>
+      <Text type="secondary" strong={strong} style={{ fontSize: 12 }}>
         {label}
       </Text>
       <Text code ellipsis style={{ maxWidth: 200, margin: 0 }}>
@@ -937,7 +935,7 @@ const ModelTest = () => {
           <Tag
             color="processing"
             icon={state.running ? <SyncOutlined spin /> : null}
-            style={{ fontSize: 13, padding: "4px 10px" }}
+            style={{ fontSize: 12, padding: "4px 10px" }}
           >
             {state.summary}
           </Tag>
@@ -967,7 +965,7 @@ const ModelTest = () => {
               <HistoryOutlined style={{ color: "#8c8c8c" }} />
               <Select
                 placeholder="快速加载历史连接"
-                style={{ width: 400 }}
+                style={{ width: 360 }}
                 onChange={(val) => {
                   const item = localUrls[val];
                   if (item) {
@@ -986,7 +984,7 @@ const ModelTest = () => {
             </Space>
           }
         >
-          <Row gutter={24}>
+          <Row gutter={24} align="top">
             <Col xs={24} md={4}>
               <ConfigField
                 label="API Base URL"
@@ -1000,7 +998,7 @@ const ModelTest = () => {
                 }
               />
             </Col>
-            <Col xs={24} md={4}>
+            <Col xs={24} md={6}>
               <ConfigField
                 label="API Token"
                 value={state.token}
@@ -1015,6 +1013,19 @@ const ModelTest = () => {
                 onChange={(v) => (state.name = v)}
                 placeholder="例如：OpenAI 生产环境"
               />
+            </Col>
+            <Col xs={24} md={8}>
+              <div>&nbsp;&nbsp;</div>
+              <Button
+                type="primary"
+                ghost
+                icon={<ReloadOutlined />}
+                onClick={fetchModels}
+                loading={state.loadingModels}
+                disabled={!state.token.trim() || state.running}
+              >
+                拉取模型列表
+              </Button>
             </Col>
             {/* 新增备注列 */}
             <Col xs={24} md={24}>
@@ -1042,16 +1053,6 @@ const ModelTest = () => {
             </Col>
           </Row>
           <Space wrap style={{ marginTop: 16 }}>
-            <Button
-              type="primary"
-              ghost
-              icon={<ReloadOutlined />}
-              onClick={fetchModels}
-              loading={state.loadingModels}
-              disabled={!state.token.trim() || state.running}
-            >
-              拉取模型列表
-            </Button>
             {state.name && (
               <CopyChip
                 label="名称"
@@ -1142,7 +1143,7 @@ const ModelTest = () => {
                     清空列表选择
                   </Button>
                 </Space>
-                <Text type="secondary" style={{ fontSize: 13 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
                   列表勾选:{" "}
                   <Text strong color="blue">
                     {state.selectedModels.length}
@@ -1202,7 +1203,7 @@ const ModelTest = () => {
                     清空选择
                   </Button>
                 </Space>
-                <Text type="secondary" style={{ fontSize: 13 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
                   已选:{" "}
                   <Text strong color="blue">
                     {state.selectedTestTypes.length}
@@ -1217,10 +1218,10 @@ const ModelTest = () => {
 
               <div style={styles.actionReadyBox}>
                 <Space direction="vertical" style={{ width: "100%" }} size={2}>
-                  <Text strong style={{ color: "#0958d9", fontSize: 16 }}>
+                  <Text strong style={{ color: "#0f172a", fontSize: 15 }}>
                     准备就绪
                   </Text>
-                  <Text type="secondary" style={{ fontSize: 13 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
                     系统将依次调用 {mergedModels.length} 个模型，共计发出{" "}
                     {mergedModels.length * state.selectedTestTypes.length}{" "}
                     次测试请求。
@@ -1234,7 +1235,7 @@ const ModelTest = () => {
                   onClick={runTests}
                   disabled={!canRun}
                   loading={state.running}
-                  style={{ marginTop: 16, height: 48, fontSize: 16 }}
+                  style={{ marginTop: 16, height: 46, fontSize: 15 }}
                 >
                   开始自动化测试
                 </Button>
@@ -1284,24 +1285,25 @@ const ModelTest = () => {
 const styles = {
   page: {
     margin: "0 auto",
-    padding: "24px 32px",
-    background: "#f5f7fa",
+    padding: "28px 36px",
+    background: "#f7f8fa",
   },
   headerRow: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   backLink: {
-    color: "#595959",
-    fontSize: 15,
+    color: "#475569",
+    fontSize: 14,
     textDecoration: "none",
     transition: "color 0.2s",
   },
   card: {
     borderRadius: 12,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+    border: "1px solid #f0f0f0",
+    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.04)",
   },
   copyChip: {
     display: "inline-flex",
@@ -1309,53 +1311,53 @@ const styles = {
     gap: 6,
     padding: "4px 10px",
     background: "#f5f5f5",
-    borderRadius: 6,
+    borderRadius: 8,
     cursor: "pointer",
     transition: "all 0.2s",
   },
   selectorBox: {
-    border: "1px solid #e8e8e8",
-    borderRadius: 8,
+    border: "1px solid #eef2f6",
+    borderRadius: 10,
     padding: 16,
     maxHeight: 240,
     overflow: "auto",
-    background: "#fafafa",
+    background: "#fbfbfc",
   },
   actionReadyBox: {
     marginTop: 20,
-    padding: 20,
-    background: "#f0f5ff",
-    borderRadius: 10,
-    border: "1px solid #adc6ff",
+    padding: 18,
+    background: "#f8fafc",
+    borderRadius: 12,
+    border: "1px solid #e2e8f0",
   },
   logCard: {
-    borderRadius: 10,
-    boxShadow: "0 1px 4px rgba(0,0,0,0.02)",
+    borderRadius: 12,
+    boxShadow: "0 1px 4px rgba(15,23,42,0.04)",
     overflow: "hidden",
   },
   metaRow: {
     padding: "10px 16px",
     background: "#fafafa",
-    borderRadius: 6,
+    borderRadius: 8,
     width: "100%",
   },
   caseCard: {
-    borderRadius: 8,
+    borderRadius: 10,
     padding: "12px 16px",
   },
   previewBox: {
     marginTop: 8,
     padding: "8px 12px",
-    background: "rgba(255,255,255,0.6)",
-    borderRadius: 6,
+    background: "rgba(255,255,255,0.7)",
+    borderRadius: 8,
   },
   pre: {
     margin: 0,
     maxHeight: 300,
     overflow: "auto",
-    background: "#0d1117",
-    color: "#c9d1d9",
-    borderRadius: 8,
+    background: "#0b1220",
+    color: "#cbd5f5",
+    borderRadius: 10,
     padding: 16,
     fontSize: 13,
     fontFamily:
