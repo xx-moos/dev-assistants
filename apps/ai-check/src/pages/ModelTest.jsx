@@ -6,7 +6,6 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { useReactive, useMemoizedFn, useLocalStorageState } from "ahooks";
 import {
-  Alert,
   Button,
   Card,
   Checkbox,
@@ -19,8 +18,10 @@ import {
   Space,
   Spin,
   Tag,
-  Tooltip,
   Typography,
+  Select,
+  Badge,
+  message,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -29,6 +30,14 @@ import {
   DownloadOutlined,
   PlayCircleOutlined,
   ReloadOutlined,
+  CheckCircleFilled,
+  CloseCircleFilled,
+  ExclamationCircleFilled,
+  SyncOutlined,
+  ThunderboltOutlined,
+  HistoryOutlined,
+  AppstoreOutlined,
+  ControlOutlined,
 } from "@ant-design/icons";
 
 dayjs.extend(utc);
@@ -110,25 +119,53 @@ const parseModelInput = (text) =>
 const normalizeAxiosError = (error) => {
   const status = error?.response?.status || null;
   const payload = error?.response?.data || null;
-  const message =
+  const messageText =
     payload?.error?.message ||
     payload?.message ||
     error?.message ||
     (status ? `HTTP ${status}` : "请求失败");
-  const wrapped = new Error(message);
+  const wrapped = new Error(messageText);
   wrapped.status = status;
   wrapped.payload = payload;
   return wrapped;
 };
 
-const getStatusColor = (status) => {
-  const colorMap = {
-    成功: "green",
-    失败: "red",
-    部分失败: "orange",
-    进行中: "blue",
+// 状态样式映射 (UI增强)
+const getStatusStyles = (status) => {
+  const map = {
+    成功: {
+      bg: "#f6ffed",
+      border: "#b7eb8f",
+      color: "#52c41a",
+      icon: <CheckCircleFilled />,
+    },
+    失败: {
+      bg: "#fff2f0",
+      border: "#ffa39e",
+      color: "#ff4d4f",
+      icon: <CloseCircleFilled />,
+    },
+    部分失败: {
+      bg: "#fffbe6",
+      border: "#ffe58f",
+      color: "#faad14",
+      icon: <ExclamationCircleFilled />,
+    },
+    进行中: {
+      bg: "#e6f4ff",
+      border: "#91caff",
+      color: "#1677ff",
+      icon: <SyncOutlined spin />,
+    },
   };
-  return colorMap[status] || "blue";
+  return (
+    map[status] || {
+      bg: "#fafafa",
+      border: "#d9d9d9",
+      color: "#8c8c8c",
+      icon: null,
+    }
+  );
 };
 
 // 子组件：配置输入字段
@@ -141,14 +178,19 @@ const ConfigField = ({
   disabled,
   extra,
 }) => (
-  <Space direction="vertical" size={4} style={{ width: "100%" }}>
-    <Text type="secondary">{label}</Text>
+  <div style={{ marginBottom: 16 }}>
+    <div style={{ marginBottom: 6 }}>
+      <Text strong style={{ color: "#262626" }}>
+        {label}
+      </Text>
+    </div>
     {type === "password" ? (
       <Input.Password
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
+        size="large"
       />
     ) : (
       <Input
@@ -156,24 +198,32 @@ const ConfigField = ({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
+        size="large"
       />
     )}
-    {extra ? <div>{extra}</div> : null}
-  </Space>
+    {extra && <div style={{ marginTop: 6, fontSize: 13 }}>{extra}</div>}
+  </div>
 );
 
 // 子组件：可复制标签
 const CopyChip = ({ label, value, onCopy, strong = false }) => {
   const displayValue = value || "-";
   return (
-    <a onClick={() => onCopy(value, label)}>
-      <Space size={6} style={{ maxWidth: 360 }}>
-        <Text strong={strong}>{label}</Text>
-        <Text code ellipsis style={{ maxWidth: 240 }}>
-          {displayValue}
-        </Text>
-      </Space>
-    </a>
+    <div
+      onClick={() => onCopy(value, label)}
+      style={styles.copyChip}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "#e6f4ff")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "#f5f5f5")}
+      title="点击复制"
+    >
+      <Text type="secondary" strong={strong} style={{ fontSize: 13 }}>
+        {label}
+      </Text>
+      <Text code ellipsis style={{ maxWidth: 200, margin: 0 }}>
+        {displayValue}
+      </Text>
+      <CopyOutlined style={{ color: "#8c8c8c", fontSize: 12 }} />
+    </div>
   );
 };
 
@@ -184,112 +234,201 @@ const ModelSelector = ({ models, selectedModels, onToggle, disabled }) => (
       <Empty
         image={Empty.PRESENTED_IMAGE_SIMPLE}
         description="暂无模型，请先拉取。"
+        style={{ margin: "24px 0" }}
       />
     ) : (
-      <Space size={[8, 8]} wrap>
+      <Row gutter={[12, 12]}>
         {models.map((model) => (
-          <Checkbox
-            key={model}
-            checked={selectedModels.includes(model)}
-            disabled={disabled}
-            onChange={() => onToggle(model)}
-          >
-            {model}
-          </Checkbox>
+          <Col xs={24} sm={12} lg={8} key={model}>
+            <Checkbox
+              checked={selectedModels.includes(model)}
+              disabled={disabled}
+              onChange={() => onToggle(model)}
+            >
+              <span style={{ wordBreak: "break-all" }}>{model}</span>
+            </Checkbox>
+          </Col>
         ))}
-      </Space>
+      </Row>
     )}
   </div>
 );
 
 // 子组件：测试类型选择器
 const TestTypeSelector = ({ selectedTestTypes, onToggle, disabled }) => (
-  <div style={styles.selectorBox}>
-    <Space size={[8, 8]} wrap>
+  <div style={{ ...styles.selectorBox, maxHeight: "auto" }}>
+    <Row gutter={[16, 16]}>
       {TEST_TYPES.map((item) => (
-        <Checkbox
-          key={item.key}
-          checked={selectedTestTypes.includes(item.key)}
-          disabled={disabled}
-          onChange={() => onToggle(item.key)}
-        >
-          {item.label}
-        </Checkbox>
+        <Col span={12} key={item.key}>
+          <Checkbox
+            checked={selectedTestTypes.includes(item.key)}
+            disabled={disabled}
+            onChange={() => onToggle(item.key)}
+          >
+            {item.label}
+          </Checkbox>
+        </Col>
       ))}
-    </Space>
+    </Row>
   </div>
 );
 
 // 子组件：单个测试用例
-const CaseItem = ({ item }) => (
-  <Card size="small" style={styles.caseCard}>
-    <Space size={[8, 8]} wrap style={{ width: "100%" }}>
-      <Text strong>{item.testType}</Text>
-      <Tag color={getStatusColor(item.status)}>{item.status}</Tag>
-      <Text type="secondary">{item.startedAt}</Text>
-      <Tag>{item.durationMs}ms</Tag>
-    </Space>
-    {item.preview ? (
-      <Paragraph
+const CaseItem = ({ item }) => {
+  const meta = getStatusStyles(item.status);
+  return (
+    <div
+      style={{
+        ...styles.caseCard,
+        border: `1px solid ${meta.border}`,
+        backgroundColor: meta.bg,
+      }}
+    >
+      <Row align="middle" justify="space-between" style={{ marginBottom: 8 }}>
+        <Col>
+          <Space size={10} align="center">
+            <span style={{ color: meta.color, fontSize: 16, display: "flex" }}>
+              {meta.icon}
+            </span>
+            <Text strong>{item.testType}</Text>
+            <Tag color={meta.color} style={{ margin: 0 }}>
+              {item.status}
+            </Tag>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {item.durationMs} ms
+            </Text>
+          </Space>
+        </Col>
+        <Col>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {item.startedAt}
+          </Text>
+        </Col>
+      </Row>
+
+      {item.preview && (
+        <div style={styles.previewBox}>
+          <Text
+            type="secondary"
+            style={{ fontSize: 13, marginBottom: 4, display: "block" }}
+          >
+            输出预览：
+          </Text>
+          <Paragraph
+            ellipsis={{ rows: 2, expandable: true, symbol: "展开" }}
+            style={{ margin: 0, fontSize: 13 }}
+          >
+            {item.preview}
+          </Paragraph>
+        </div>
+      )}
+
+      <Collapse
+        ghost
+        size="small"
         style={{ marginTop: 8 }}
-        ellipsis={{ rows: 2, expandable: true, symbol: "展开" }}
-      >
-        {item.preview}
-      </Paragraph>
-    ) : null}
-    <Collapse
-      size="small"
-      items={[
-        {
-          key: "request",
-          label: "请求",
-          children: (
-            <pre style={styles.pre}>
-              {JSON.stringify(item.request, null, 2)}
-            </pre>
-          ),
-        },
-        {
-          key: "response",
-          label: "响应",
-          children: (
-            <pre style={styles.pre}>
-              {JSON.stringify(item.response, null, 2)}
-            </pre>
-          ),
-        },
-      ]}
-    />
-  </Card>
-);
+        items={[
+          {
+            key: "details",
+            label: (
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                查看请求与响应详情
+              </Text>
+            ),
+            children: (
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={12}>
+                  <div style={{ marginBottom: 6 }}>
+                    <Text strong style={{ color: "#8c8c8c" }}>
+                      请求 (Request)
+                    </Text>
+                  </div>
+                  <pre style={styles.pre}>
+                    {JSON.stringify(item.request, null, 2)}
+                  </pre>
+                </Col>
+                <Col xs={24} md={12}>
+                  <div style={{ marginBottom: 6 }}>
+                    <Text strong style={{ color: "#8c8c8c" }}>
+                      响应 (Response)
+                    </Text>
+                  </div>
+                  <pre style={styles.pre}>
+                    {JSON.stringify(item.response, null, 2)}
+                  </pre>
+                </Col>
+              </Row>
+            ),
+          },
+        ]}
+      />
+    </div>
+  );
+};
 
 // 子组件：模型日志卡片
-const ModelLogCard = ({ log, onCopy }) => (
-  <Card
-    size="small"
-    style={styles.logCard}
-    title={
-      <Space size={8} wrap>
-        <CopyChip label="模型" value={log.model} onCopy={onCopy} strong />
-        <Tag color={getStatusColor(log.status)}>{log.status}</Tag>
-      </Space>
-    }
-  >
-    <Space size={[12, 8]} wrap style={styles.metaRow}>
-      <Text type="secondary">开始：{log.startedAt}</Text>
-      <Text type="secondary">结束：{log.endedAt || "-"}</Text>
-      <Text type="secondary">耗时：{log.totalDurationMs}ms</Text>
-      <Text type="secondary">成功：{log.successCount}</Text>
-      <Text type="secondary">失败：{log.failCount}</Text>
-    </Space>
-    <Divider style={{ margin: "12px 0" }} />
-    <Space direction="vertical" size={8} style={{ width: "100%" }}>
-      {log.cases.map((item) => (
-        <CaseItem key={item.id} item={item} />
-      ))}
-    </Space>
-  </Card>
-);
+const ModelLogCard = ({ log, onCopy }) => {
+  const meta = getStatusStyles(log.status);
+
+  return (
+    <Badge.Ribbon text={log.status} color={meta.color}>
+      <Card
+        size="small"
+        style={{
+          ...styles.logCard,
+          borderColor: log.status === "进行中" ? "#1677ff" : "#f0f0f0",
+        }}
+        title={
+          <Space size={12}>
+            <div
+              style={{
+                width: 4,
+                height: 16,
+                background: meta.color,
+                borderRadius: 2,
+              }}
+            />
+            <Text strong style={{ fontSize: 16 }}>
+              {log.model}
+            </Text>
+            <CopyOutlined
+              style={{ color: "#1677ff", cursor: "pointer" }}
+              onClick={() => onCopy(log.model, "模型")}
+              title="复制模型名称"
+            />
+          </Space>
+        }
+      >
+        <Space size={16} wrap style={styles.metaRow}>
+          <Text type="secondary">
+            开始: <Text strong>{log.startedAt}</Text>
+          </Text>
+          <Text type="secondary">
+            耗时: <Text strong>{log.totalDurationMs} ms</Text>
+          </Text>
+          <Text type="secondary">
+            成功:{" "}
+            <Text type="success" strong>
+              {log.successCount}
+            </Text>
+          </Text>
+          <Text type="secondary">
+            失败:{" "}
+            <Text type="danger" strong>
+              {log.failCount}
+            </Text>
+          </Text>
+        </Space>
+        <Divider style={{ margin: "16px 0" }} />
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          {log.cases.map((item) => (
+            <CaseItem key={item.id} item={item} />
+          ))}
+        </Space>
+      </Card>
+    </Badge.Ribbon>
+  );
+};
 
 // 主组件
 const ModelTest = () => {
@@ -312,7 +451,7 @@ const ModelTest = () => {
     running: false,
     logs: [],
     summary: "",
-    copyHint: "",
+    copyHint: "", // 保持原状：内部状态变量不动，但使用 message 提示用户
   });
 
   const apiRoot = useMemo(() => toApiRoot(state.baseUrl), [state.baseUrl]);
@@ -340,17 +479,17 @@ const ModelTest = () => {
     [apiRoot, state.token],
   );
 
-  // 更新指定模型日志
   const updateModelLog = useMemoizedFn((id, updater) => {
     state.logs = state.logs.map((item) =>
       item.id === id ? updater(item) : item,
     );
   });
 
-  // 复制文本到剪贴板
+  // 复制并唤起交互提示
   const copyText = useMemoizedFn(async (value, label) => {
     if (!value) {
       state.copyHint = `复制失败：${label} 为空`;
+      message.warning(state.copyHint);
       return;
     }
     try {
@@ -365,12 +504,13 @@ const ModelTest = () => {
         document.body.removeChild(input);
       }
       state.copyHint = `${label} 已复制`;
+      message.success(state.copyHint);
     } catch {
       state.copyHint = `复制失败：浏览器未授权访问剪贴板`;
+      message.error(state.copyHint);
     }
   });
 
-  // 统一API请求方法
   const requestApi = useMemoizedFn(
     async ({ path, method = "POST", data, params, headers }) => {
       try {
@@ -388,10 +528,10 @@ const ModelTest = () => {
     },
   );
 
-  // 拉取模型列表
   const fetchModels = useMemoizedFn(async () => {
     if (!state.token.trim()) {
       state.summary = "请先填写 API Token。";
+      message.warning(state.summary);
       return;
     }
     state.loadingModels = true;
@@ -404,14 +544,15 @@ const ModelTest = () => {
       state.models = list;
       state.selectedModels = [];
       state.summary = `模型拉取成功，共 ${list.length} 个。`;
+      message.success(state.summary);
     } catch (error) {
       state.summary = `模型拉取失败：${error.message}`;
+      message.error(state.summary);
     } finally {
       state.loadingModels = false;
     }
   });
 
-  // 创建测试执行器
   const createTestRunners = useMemoizedFn(() => ({
     text: async (model) => {
       const requestBody = {
@@ -584,10 +725,7 @@ const ModelTest = () => {
         model,
         max_tokens: 1024,
         messages: [
-          {
-            role: "user",
-            content: '你好，这是一个连接测试，请回复"连接成功"',
-          },
+          { role: "user", content: '你好，这是一个连接测试，请回复"连接成功"' },
         ],
       };
       const startedAt = dayjs();
@@ -603,7 +741,7 @@ const ModelTest = () => {
         },
       });
 
-      const hasFunctionCall = result.status == 200;
+      const hasFunctionCall = result.status === 200;
 
       return {
         status: hasFunctionCall ? "成功" : "失败",
@@ -618,7 +756,6 @@ const ModelTest = () => {
     },
   }));
 
-  // 执行单个测试用例
   const runSingleCase = useMemoizedFn(async (model, testType, runner) => {
     const startedAt = dayjs();
     try {
@@ -655,7 +792,6 @@ const ModelTest = () => {
     }
   });
 
-  // 执行单个模型的所有测试
   const runModelTests = useMemoizedFn(async (model, runners) => {
     const modelLogId = generateId();
     const modelStartedAt = dayjs();
@@ -712,71 +848,62 @@ const ModelTest = () => {
     }));
   });
 
-  // 串行执行所有模型测试
   const runTests = useMemoizedFn(async () => {
     if (!canRun) return;
     const targetModels = [...mergedModels];
     state.running = true;
-    state.summary = `开始串行测试，共 ${targetModels.length} 个模型，每个模型 ${state.selectedTestTypes.length} 项。`;
+    state.summary = `开始自动化测试，共 ${targetModels.length} 个模型，每个模型 ${state.selectedTestTypes.length} 项。`;
 
     try {
       const runners = createTestRunners();
       for (const model of targetModels) {
         await runModelTests(model, runners);
       }
-      state.summary = `测试完成，共执行 ${targetModels.length * state.selectedTestTypes.length} 项。`;
-      const has = localUrls.find((it) => {
-        return it.url === state.baseUrl && it.token === state.token;
-      });
+      state.summary = `测试完成，共执行 ${targetModels.length * state.selectedTestTypes.length} 项测试用例。`;
+      message.success(state.summary);
+
+      const has = localUrls.find(
+        (it) => it.url === state.baseUrl && it.token === state.token,
+      );
       if (!has) {
         setLocalUrls([
           ...localUrls,
           {
-            name: state.name,
+            name: state.name || "未命名配置",
             url: state.baseUrl,
             token: state.token,
           },
         ]);
       }
+    } catch (e) {
+      state.summary = "测试发生异常被中断。";
+      message.error(state.summary);
     } finally {
       state.running = false;
     }
   });
 
-  // 模型选择操作
+  // 操作响应方法
   const toggleModel = useMemoizedFn((modelId) => {
     state.selectedModels = state.selectedModels.includes(modelId)
       ? state.selectedModels.filter((id) => id !== modelId)
       : [...state.selectedModels, modelId];
   });
+  const selectAllModels = useMemoizedFn(
+    () => (state.selectedModels = [...state.models]),
+  );
+  const clearModelSelection = useMemoizedFn(() => (state.selectedModels = []));
 
-  const selectAllModels = useMemoizedFn(() => {
-    state.selectedModels = [...state.models];
-  });
-
-  const clearModelSelection = useMemoizedFn(() => {
-    state.selectedModels = [];
-  });
-
-  // 测试类型选择操作
   const toggleTestType = useMemoizedFn((key) => {
     state.selectedTestTypes = state.selectedTestTypes.includes(key)
       ? state.selectedTestTypes.filter((item) => item !== key)
       : [...state.selectedTestTypes, key];
   });
-
-  const selectAllTestTypes = useMemoizedFn(() => {
-    state.selectedTestTypes = TEST_TYPES.map((item) => item.key);
-  });
-
-  const clearTestTypes = useMemoizedFn(() => {
-    state.selectedTestTypes = [];
-  });
-
-  // 日志操作
-  const clearLogs = useMemoizedFn(() => {
-    state.logs = [];
-  });
+  const selectAllTestTypes = useMemoizedFn(
+    () => (state.selectedTestTypes = TEST_TYPES.map((item) => item.key)),
+  );
+  const clearTestTypes = useMemoizedFn(() => (state.selectedTestTypes = []));
+  const clearLogs = useMemoizedFn(() => (state.logs = []));
 
   const exportLogs = useMemoizedFn(() => {
     const file = new Blob([JSON.stringify(state.logs, null, 2)], {
@@ -792,18 +919,72 @@ const ModelTest = () => {
 
   return (
     <div style={styles.page}>
-      <Space align="center" style={styles.headerRow}>
-        <Link to="/" style={styles.backLink}>
-          <ArrowLeftOutlined /> 返回菜单
-        </Link>
-        <Title level={3} style={{ margin: 0 }}>
-          模型测试
-        </Title>
-      </Space>
+      {/* 头部导航与全局状态 */}
+      <div style={styles.headerRow}>
+        <Space size={16} align="center">
+          <Link to="/" style={styles.backLink}>
+            <ArrowLeftOutlined /> 返回
+          </Link>
+          <Title
+            level={4}
+            style={{ margin: 0, fontWeight: 600, color: "#1f1f1f" }}
+          >
+            模型自动化测试
+          </Title>
+        </Space>
+        {state.summary && (
+          <Tag
+            color="processing"
+            icon={state.running ? <SyncOutlined spin /> : null}
+            style={{ fontSize: 13, padding: "4px 10px" }}
+          >
+            {state.summary}
+          </Tag>
+        )}
+      </div>
 
-      <Spin spinning={state.running} tip="正在执行测试...">
-        <Card title="连接配置" style={styles.card}>
-          <Row gutter={[16, 16]}>
+      <Spin
+        spinning={state.running}
+        tip={
+          <div style={{ marginTop: 12 }}>
+            {state.summary || "正在执行测试..."}
+          </div>
+        }
+        size="large"
+      >
+        {/* 配置区 */}
+        <Card
+          title={
+            <Space>
+              <ThunderboltOutlined style={{ color: "#1677ff" }} />
+              <Text strong>连接与配置</Text>
+            </Space>
+          }
+          style={styles.card}
+          extra={
+            <Space>
+              <HistoryOutlined style={{ color: "#8c8c8c" }} />
+              <Select
+                placeholder="快速加载历史连接"
+                style={{ width: 400 }}
+                onChange={(val) => {
+                  const item = localUrls[val];
+                  if (item) {
+                    state.name = item.name;
+                    state.baseUrl = item.url;
+                    state.token = item.token;
+                    message.success(`已加载配置：${item.name}`);
+                  }
+                }}
+                options={localUrls.map((it, index) => ({
+                  label: `${it.name} (${it.url})`,
+                  value: index,
+                }))}
+              />
+            </Space>
+          }
+        >
+          <Row gutter={24}>
             <Col xs={24} md={8}>
               <ConfigField
                 label="API Base URL"
@@ -812,7 +993,7 @@ const ModelTest = () => {
                 placeholder="https://api.openai.com/v1"
                 extra={
                   <Text type="secondary">
-                    API 根地址（自动推导） <Text code>{apiRoot || "-"}</Text>
+                    自动推导接口：<Text code>{apiRoot || "-"}</Text>
                   </Text>
                 }
               />
@@ -828,16 +1009,18 @@ const ModelTest = () => {
             </Col>
             <Col xs={24} md={8}>
               <ConfigField
-                label="名称"
+                label="配置名称"
                 value={state.name}
                 onChange={(v) => (state.name = v)}
-                placeholder="例如：OpenAI 上海"
+                placeholder="例如：OpenAI 生产环境"
               />
             </Col>
           </Row>
 
-          <Space style={{ marginTop: 16 }} wrap>
+          <Space wrap style={{ marginTop: 16 }}>
             <Button
+              type="primary"
+              ghost
               icon={<ReloadOutlined />}
               onClick={fetchModels}
               loading={state.loadingModels}
@@ -845,30 +1028,29 @@ const ModelTest = () => {
             >
               拉取模型列表
             </Button>
-          </Space>
-
-          <Divider style={{ margin: "16px 0" }} />
-
-          <Space size={[8, 8]} wrap>
-            <CopyChip
-              label="名称"
-              value={state.name.trim()}
-              onCopy={copyText}
-              strong
-            />
-            <CopyChip
-              label="Url"
-              value={state.baseUrl.trim()}
-              onCopy={copyText}
-              strong
-            />
-            <CopyChip
-              label="API Token"
-              value={state.token.trim()}
-              onCopy={copyText}
-              strong
-            />
-            {mergedModels.map((model) => (
+            {state.name && (
+              <CopyChip
+                label="名称"
+                value={state.name.trim()}
+                onCopy={copyText}
+                strong
+              />
+            )}
+            {state.baseUrl && (
+              <CopyChip
+                label="Url"
+                value={state.baseUrl.trim()}
+                onCopy={copyText}
+              />
+            )}
+            {state.token && (
+              <CopyChip
+                label="Token"
+                value={state.token.trim()}
+                onCopy={copyText}
+              />
+            )}
+            {mergedModels.slice(0, 3).map((model) => (
               <CopyChip
                 key={model}
                 label="模型"
@@ -876,155 +1058,171 @@ const ModelTest = () => {
                 onCopy={copyText}
               />
             ))}
-          </Space>
-
-          <Space direction="vertical" style={{ marginTop: 16, width: "100%" }}>
-            {state.copyHint ? (
-              <Alert
-                type={state.copyHint.includes("失败") ? "warning" : "success"}
-                showIcon
-                message={state.copyHint}
-              />
-            ) : null}
+            {mergedModels.length > 3 && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                等 {mergedModels.length} 个...
+              </Text>
+            )}
           </Space>
         </Card>
 
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={8}>
-            <Card title="模型选择" style={styles.card}>
-              <Space
-                direction="vertical"
-                size="middle"
-                style={{ width: "100%" }}
-              >
-                <Space direction="vertical" size={6} style={{ width: "100%" }}>
-                  <Text type="secondary">补充模型（逗号分割，可多填）</Text>
-                  <Input
-                    value={state.manualModelsText}
-                    onChange={(e) => (state.manualModelsText = e.target.value)}
-                    placeholder="例如：gpt-4o,gpt-4.1, o3-mini"
-                    disabled={state.running}
-                  />
-                  <Text type="secondary">
-                    会与勾选模型合并去重后执行，当前补充 {manualModels.length}{" "}
-                    个，合计执行 {mergedModels.length} 个。
-                  </Text>
+        {/* 测试参数区 */}
+        <Row gutter={24} style={{ marginTop: 24 }}>
+          <Col xs={24} lg={14}>
+            <Card
+              title={
+                <Space>
+                  <AppstoreOutlined style={{ color: "#1677ff" }} />
+                  <Text strong>1. 选择目标模型</Text>
                 </Space>
-
-                <Space wrap>
+              }
+              style={{ ...styles.card, height: "100%" }}
+            >
+              <div style={{ marginBottom: 16 }}>
+                <Text
+                  type="secondary"
+                  style={{ display: "block", marginBottom: 6 }}
+                >
+                  补充或手动指定模型（逗号分割，可多填）
+                </Text>
+                <Input
+                  value={state.manualModelsText}
+                  onChange={(e) => (state.manualModelsText = e.target.value)}
+                  placeholder="例如：gpt-4o, o3-mini"
+                  disabled={state.running}
+                />
+              </div>
+              <Space
+                style={{
+                  marginBottom: 12,
+                  width: "100%",
+                  justifyContent: "space-between",
+                }}
+                wrap
+              >
+                <Space>
                   <Button
+                    size="small"
                     onClick={selectAllModels}
                     disabled={state.models.length === 0 || state.running}
                   >
-                    全选
+                    全选下拉
                   </Button>
                   <Button
+                    size="small"
                     onClick={clearModelSelection}
                     disabled={
                       state.selectedModels.length === 0 || state.running
                     }
                   >
-                    清空选择
+                    清空列表选择
                   </Button>
-                  <Tag color="blue">勾选：{state.selectedModels.length}</Tag>
-                  <Tag>总计：{mergedModels.length}</Tag>
                 </Space>
-
-                <ModelSelector
-                  models={state.models}
-                  selectedModels={state.selectedModels}
-                  onToggle={toggleModel}
-                  disabled={state.running}
-                />
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  列表勾选:{" "}
+                  <Text strong color="blue">
+                    {state.selectedModels.length}
+                  </Text>{" "}
+                  / 手动补充: <Text strong>{manualModels.length}</Text> /
+                  去重总计:{" "}
+                  <Text strong color="blue">
+                    {mergedModels.length}
+                  </Text>
+                </Text>
               </Space>
+              <ModelSelector
+                models={state.models}
+                selectedModels={state.selectedModels}
+                onToggle={toggleModel}
+                disabled={state.running}
+              />
             </Card>
           </Col>
 
-          <Col xs={24} lg={16}>
-            <Card title="测试与历史" style={styles.card}>
-              <Row gutter={[16, 16]}>
-                <Col xs={24} md={10}>
-                  <Title level={5} style={styles.sectionTitle}>
-                    测试类型选择
-                  </Title>
-                  <Space wrap>
-                    <Button
-                      onClick={selectAllTestTypes}
-                      disabled={
-                        state.selectedTestTypes.length === TEST_TYPES.length ||
-                        state.running
-                      }
-                    >
-                      全选
-                    </Button>
-                    <Button
-                      onClick={clearTestTypes}
-                      disabled={
-                        state.selectedTestTypes.length === 0 || state.running
-                      }
-                    >
-                      清空选择
-                    </Button>
-                    <Tag color="blue">
-                      已选：{state.selectedTestTypes.length}
-                    </Tag>
-                    <Button
-                      type="primary"
-                      icon={<PlayCircleOutlined />}
-                      onClick={runTests}
-                      disabled={!canRun}
-                      loading={state.running}
-                    >
-                      开始串行测试
-                    </Button>
-                  </Space>
+          <Col xs={24} lg={10}>
+            <Card
+              title={
+                <Space>
+                  <ControlOutlined style={{ color: "#1677ff" }} />
+                  <Text strong>2. 选择测试能力与执行</Text>
+                </Space>
+              }
+              style={{ ...styles.card, height: "100%" }}
+            >
+              <Space
+                style={{
+                  marginBottom: 12,
+                  width: "100%",
+                  justifyContent: "space-between",
+                }}
+                wrap
+              >
+                <Space>
+                  <Button
+                    size="small"
+                    onClick={selectAllTestTypes}
+                    disabled={
+                      state.selectedTestTypes.length === TEST_TYPES.length ||
+                      state.running
+                    }
+                  >
+                    全选能力
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={clearTestTypes}
+                    disabled={
+                      state.selectedTestTypes.length === 0 || state.running
+                    }
+                  >
+                    清空选择
+                  </Button>
+                </Space>
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  已选:{" "}
+                  <Text strong color="blue">
+                    {state.selectedTestTypes.length}
+                  </Text>
+                </Text>
+              </Space>
+              <TestTypeSelector
+                selectedTestTypes={state.selectedTestTypes}
+                onToggle={toggleTestType}
+                disabled={state.running}
+              />
 
-                  <div style={{ marginTop: 12 }}>
-                    <TestTypeSelector
-                      selectedTestTypes={state.selectedTestTypes}
-                      onToggle={toggleTestType}
-                      disabled={state.running}
-                    />
-                  </div>
-                </Col>
-
-                <Col xs={24} md={14}>
-                  <Title level={5} style={styles.sectionTitle}>
-                    历史连接
-                  </Title>
-                  <div style={styles.historyBox}>
-                    {localUrls.length === 0 ? (
-                      <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description="暂无历史连接"
-                      />
-                    ) : (
-                      <Space size={[8, 8]} wrap>
-                        {localUrls.map((it, index) => (
-                          <Button
-                            key={`${it.url}-${index}`}
-                            size="small"
-                            onClick={() => {
-                              state.name = it.name;
-                              state.baseUrl = it.url;
-                              state.token = it.token;
-                            }}
-                          >
-                            {it.name} - {it.url}
-                          </Button>
-                        ))}
-                      </Space>
-                    )}
-                  </div>
-                </Col>
-              </Row>
+              <div style={styles.actionReadyBox}>
+                <Space direction="vertical" style={{ width: "100%" }} size={2}>
+                  <Text strong style={{ color: "#0958d9", fontSize: 16 }}>
+                    准备就绪
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    系统将依次调用 {mergedModels.length} 个模型，共计发出{" "}
+                    {mergedModels.length * state.selectedTestTypes.length}{" "}
+                    次测试请求。
+                  </Text>
+                </Space>
+                <Button
+                  type="primary"
+                  size="large"
+                  block
+                  icon={<PlayCircleOutlined />}
+                  onClick={runTests}
+                  disabled={!canRun}
+                  loading={state.running}
+                  style={{ marginTop: 16, height: 48, fontSize: 16 }}
+                >
+                  开始自动化测试
+                </Button>
+              </div>
             </Card>
           </Col>
         </Row>
 
+        {/* 日志区 */}
         <Card
-          title="模型请求日志（按模型归并）"
-          style={styles.card}
+          title="执行日志记录"
+          style={{ ...styles.card, marginTop: 24 }}
           extra={
             <Space>
               <Button
@@ -1032,22 +1230,22 @@ const ModelTest = () => {
                 onClick={clearLogs}
                 disabled={state.running || state.logs.length === 0}
               >
-                清空日志
+                清空列表
               </Button>
               <Button
                 icon={<DownloadOutlined />}
                 onClick={exportLogs}
                 disabled={state.logs.length === 0}
               >
-                导出日志 JSON
+                导出 JSON 报告
               </Button>
             </Space>
           }
         >
           {state.logs.length === 0 ? (
-            <Empty description="暂无日志。" />
+            <Empty description="暂无测试日志。" style={{ margin: "40px 0" }} />
           ) : (
-            <Space direction="vertical" size={12} style={{ width: "100%" }}>
+            <Space direction="vertical" size={16} style={{ width: "100%" }}>
               {state.logs.map((log) => (
                 <ModelLogCard key={log.id} log={log} onCopy={copyText} />
               ))}
@@ -1062,58 +1260,83 @@ const ModelTest = () => {
 const styles = {
   page: {
     margin: "0 auto",
-    padding: 20,
+    padding: "24px 32px",
+    background: "#f5f7fa",
   },
   headerRow: {
     display: "flex",
-    gap: 12,
+    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
   },
   backLink: {
-    color: "#1677ff",
-    fontSize: 14,
+    color: "#595959",
+    fontSize: 15,
+    textDecoration: "none",
+    transition: "color 0.2s",
   },
   card: {
     borderRadius: 12,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
   },
-  sectionTitle: {
-    margin: "0 0 8px 0",
+  copyChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "4px 10px",
+    background: "#f5f5f5",
+    borderRadius: 6,
+    cursor: "pointer",
+    transition: "all 0.2s",
   },
   selectorBox: {
-    border: "1px solid #f0f0f0",
+    border: "1px solid #e8e8e8",
     borderRadius: 8,
-    padding: 12,
-    maxHeight: 260,
+    padding: 16,
+    maxHeight: 240,
     overflow: "auto",
     background: "#fafafa",
   },
-  historyBox: {
-    border: "1px dashed #e5e7eb",
+  actionReadyBox: {
+    marginTop: 20,
+    padding: 20,
+    background: "#f0f5ff",
     borderRadius: 10,
-    padding: 12,
-    minHeight: 120,
-    background: "#fcfcfd",
+    border: "1px solid #adc6ff",
   },
   logCard: {
     borderRadius: 10,
+    boxShadow: "0 1px 4px rgba(0,0,0,0.02)",
+    overflow: "hidden",
   },
   metaRow: {
-    marginTop: 4,
+    padding: "10px 16px",
+    background: "#fafafa",
+    borderRadius: 6,
+    width: "100%",
   },
   caseCard: {
     borderRadius: 8,
-    background: "#fff",
+    padding: "12px 16px",
+  },
+  previewBox: {
+    marginTop: 8,
+    padding: "8px 12px",
+    background: "rgba(255,255,255,0.6)",
+    borderRadius: 6,
   },
   pre: {
     margin: 0,
-    maxHeight: 240,
+    maxHeight: 300,
     overflow: "auto",
-    background: "#0b1020",
-    color: "#e6edf3",
+    background: "#0d1117",
+    color: "#c9d1d9",
     borderRadius: 8,
-    padding: 12,
-    fontSize: 12,
+    padding: 16,
+    fontSize: 13,
+    fontFamily:
+      "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace",
+    lineHeight: 1.5,
   },
 };
 
