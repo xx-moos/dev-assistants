@@ -34,7 +34,13 @@ export default function ModelList({
     const result = testResults[modelId];
     if (!result) return 'pending';
 
-    const statuses = [result.text.status, result.image.status, result.tool.status];
+    // 艹，动态获取所有测试状态，不要硬编码
+    const statuses = Object.keys(result)
+      .filter(key => key !== 'modelId')
+      .map(key => result[key]?.status)
+      .filter(Boolean);
+
+    if (statuses.length === 0) return 'pending';
     if (statuses.includes('testing')) return 'testing';
     if (statuses.every(s => s === 'success')) return 'success';
     if (statuses.some(s => s === 'success')) return 'partial';

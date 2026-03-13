@@ -1,52 +1,9 @@
-// 简约配色 - 老王精心调配的配色方案
-.configForm {
-  :global {
-    .ant-form-item-label > label {
-      font-weight: 500;
-      color: #1f2937;
-    }
+.item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 
-    .ant-input,
-    .ant-input-password {
-      border-radius: 8px;
-      border-color: #e5e7eb;
-
-      &:hover {
-        border-color: #4f46e5;
-      }
-
-      &:focus {
-        border-color: #4f46e5;
-        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-      }
-    }
-
-    .ant-btn-primary {
-      background: #4f46e5;
-      border: none;
-      border-radius: 8px;
-      font-weight: 500;
-      height: 40px;
-
-      &:hover {
-        background: #4338ca;
-      }
-
-      &:active {
-        background: #3730a3;
-      }
-    }
-
-    .ant-btn-default {
-      border-radius: 8px;
-      border-color: #e5e7eb;
-      height: 40px;
-      color: #6b7280;
-
-      &:hover {
-        border-color: #4f46e5;
-        color: #4f46e5;
-      }
-    }
+  > span {
+    width: 40px;
   }
 }

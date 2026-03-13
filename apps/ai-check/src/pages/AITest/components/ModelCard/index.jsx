@@ -36,48 +36,54 @@ export default function ModelCard({ model, isSelected, status, result, onToggle 
 
       {result && (
         <div className={styles.testStatus}>
-          <Tooltip title={result.text.content || result.text.error}>
-            <Tag
-              className={styles.statusBadge}
-              color={
-                result.text.status === 'success'
-                  ? 'success'
-                  : result.text.status === 'failed'
-                  ? 'error'
-                  : 'warning'
-              }
-            >
-              <MessageOutlined /> 文本
-            </Tag>
-          </Tooltip>
-          <Tooltip title={result.image.content || result.image.error}>
-            <Tag
-              className={styles.statusBadge}
-              color={
-                result.image.status === 'success'
-                  ? 'success'
-                  : result.image.status === 'failed'
-                  ? 'error'
-                  : 'warning'
-              }
-            >
-              <FileImageOutlined /> 图像
-            </Tag>
-          </Tooltip>
-          <Tooltip title={result.tool.content || result.tool.error}>
-            <Tag
-              className={styles.statusBadge}
-              color={
-                result.tool.status === 'success'
-                  ? 'success'
-                  : result.tool.status === 'failed'
-                  ? 'error'
-                  : 'warning'
-              }
-            >
-              <ToolOutlined /> 工具
-            </Tag>
-          </Tooltip>
+          {result.text && (
+            <Tooltip title={result.text.content || result.text.error}>
+              <Tag
+                className={styles.statusBadge}
+                color={
+                  result.text.status === 'success'
+                    ? 'success'
+                    : result.text.status === 'failed'
+                    ? 'error'
+                    : 'warning'
+                }
+              >
+                <MessageOutlined /> 文本
+              </Tag>
+            </Tooltip>
+          )}
+          {result.image && (
+            <Tooltip title={result.image.content || result.image.error}>
+              <Tag
+                className={styles.statusBadge}
+                color={
+                  result.image.status === 'success'
+                    ? 'success'
+                    : result.image.status === 'failed'
+                    ? 'error'
+                    : 'warning'
+                }
+              >
+                <FileImageOutlined /> 图像
+              </Tag>
+            </Tooltip>
+          )}
+          {result.tool && (
+            <Tooltip title={result.tool.content || result.tool.error}>
+              <Tag
+                className={styles.statusBadge}
+                color={
+                  result.tool.status === 'success'
+                    ? 'success'
+                    : result.tool.status === 'failed'
+                    ? 'error'
+                    : 'warning'
+                }
+              >
+                <ToolOutlined /> 工具
+              </Tag>
+            </Tooltip>
+          )}
         </div>
       )}
     </div>
