@@ -1,91 +1,60 @@
-import React from 'react';
-import { Tag, Tooltip } from 'antd';
-import {
-  CheckCircleOutlined,
-  MessageOutlined,
-  FileImageOutlined,
-  ToolOutlined
-} from '@ant-design/icons';
-import styles from './index.module.less';
+import React, { useEffect } from "react";
+import { Checkbox, Col, Form, Row, Tabs } from "antd";
+import { useReactive } from "ahooks";
 
-export default function ModelCard({ model, isSelected, status, result, onToggle }) {
-  const getModelType = (modelId) => {
-    const name = modelId.toLowerCase();
-    if (name.includes('gpt') || name.includes('openai')) return 'gpt';
-    if (name.includes('claude')) return 'claude';
-    if (name.includes('gemini')) return 'gemini';
-    return 'other';
-  };
+export default function ModelCard({ allModels, changeModelCallback }) {
+  const [form] = Form.useForm();
 
-  const modelType = getModelType(model.id);
+  const state = useReactive({
+    activeKey: "1",
+    models: [],
+  });
+
+  useEffect(() => {
+    state.models = allModels;
+  }, [allModels]);
 
   return (
-    <div
-      className={`${styles.modelCard} ${isSelected ? styles.selected : ''} ${styles[status]}`}
-      onClick={() => onToggle(model.id)}
-    >
-      <div className={styles.cardHeader}>
-        <div className={styles.modelName}>
-          {isSelected && <CheckCircleOutlined className={styles.checkIcon} />}
-          <span>{model.id}</span>
-        </div>
-        <Tag className={`${styles.modelType} ${styles[modelType]}`}>
-          {modelType.toUpperCase()}
-        </Tag>
+    <>
+      <Tabs
+        items={[
+          {
+            key: "1",
+            label: "全部",
+          },
+          {
+            key: "OpenAI",
+            label: "OpenAI",
+          },
+          {
+            key: "Claude",
+            label: "Claude",
+          },
+          {
+            key: "Gemini",
+            label: "Gemini",
+          },
+        ]}
+        onChange={(key) => {
+          state.activeKey = key;
+          state.models = allModels.filter((item) => item.owned_by === key);
+        }}
+      />
+      <div style={{ maxHeight: 220, overflowY: "auto" }}>
+        <Checkbox.Group
+          onChange={(value) => {
+            changeModelCallback.emit(value);
+          }}
+        >
+          <Row gutter={[0, 8]}>
+            {state.models.map((item) => (
+              <Col span={8} key={item.id}>
+                <Checkbox value={item.id}>{item.id}</Checkbox>
+              </Col>
+            ))}
+          </Row>
+        </Checkbox.Group>
       </div>
-
-      {result && (
-        <div className={styles.testStatus}>
-          {result.text && (
-            <Tooltip title={result.text.content || result.text.error}>
-              <Tag
-                className={styles.statusBadge}
-                color={
-                  result.text.status === 'success'
-                    ? 'success'
-                    : result.text.status === 'failed'
-                    ? 'error'
-                    : 'warning'
-                }
-              >
-                <MessageOutlined /> 文本
-              </Tag>
-            </Tooltip>
-          )}
-          {result.image && (
-            <Tooltip title={result.image.content || result.image.error}>
-              <Tag
-                className={styles.statusBadge}
-                color={
-                  result.image.status === 'success'
-                    ? 'success'
-                    : result.image.status === 'failed'
-                    ? 'error'
-                    : 'warning'
-                }
-              >
-                <FileImageOutlined /> 图像
-              </Tag>
-            </Tooltip>
-          )}
-          {result.tool && (
-            <Tooltip title={result.tool.content || result.tool.error}>
-              <Tag
-                className={styles.statusBadge}
-                color={
-                  result.tool.status === 'success'
-                    ? 'success'
-                    : result.tool.status === 'failed'
-                    ? 'error'
-                    : 'warning'
-                }
-              >
-                <ToolOutlined /> 工具
-              </Tag>
-            </Tooltip>
-          )}
-        </div>
-      )}
-    </div>
+    </>
   );
 }
