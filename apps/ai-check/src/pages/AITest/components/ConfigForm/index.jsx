@@ -26,7 +26,6 @@ export default function ConfigForm({ form, onFetchModels, onManualAdd, loading }
           <Input
             placeholder="https://api.openai.com"
             prefix={<ApiOutlined />}
-            size="large"
           />
         </Form.Item>
 
@@ -37,43 +36,32 @@ export default function ConfigForm({ form, onFetchModels, onManualAdd, loading }
         >
           <Input.Password
             placeholder="sk-..."
-            size="large"
           />
         </Form.Item>
 
-        <Form.Item label="配置名称" name="name">
-          <Input placeholder="给这个配置起个名字" />
-        </Form.Item>
-
-        <Form.Item label="备注" name="remark">
-          <TextArea rows={2} placeholder="备注信息" />
-        </Form.Item>
-
-        <Space size="middle">
+        <Space size="small">
           <Button
             type="primary"
             icon={<RocketOutlined />}
             loading={loading}
             onClick={() => form.validateFields().then(onFetchModels)}
-            size="large"
           >
             获取模型列表
           </Button>
           <Button
             onClick={onManualAdd}
-            size="large"
           >
             手动添加模型
           </Button>
         </Space>
 
         <Form.Item
-          label="手动输入模型名称（每行一个）"
+          label="手动输入模型"
           name="modelNames"
-          style={{ marginTop: 16 }}
+          style={{ marginTop: 12 }}
         >
           <TextArea
-            rows={4}
+            rows={3}
             placeholder="gpt-4&#10;claude-3-opus&#10;gemini-pro"
           />
         </Form.Item>

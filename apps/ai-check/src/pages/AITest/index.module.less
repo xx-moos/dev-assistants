@@ -1,52 +1,56 @@
-// 主页面样式 - 简约大气不刺眼
+// GitHub风格淡黄配色 - 简约紧凑
 .container {
   min-height: 100vh;
-  background: #f3f4f6;
-  padding: 40px 20px;
+  background: #fefcf9;
+  padding: 20px;
 }
 
 .mainCard {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
-  background: #4f46e5;
-  padding: 40px;
-  text-align: center;
-  color: #fff;
+  background: #f6f1e9;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e8dcc8;
+  flex-shrink: 0;
 
   h1 {
-    margin: 0 0 12px 0;
-    font-size: 32px;
-    font-weight: 700;
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 12px;
+    gap: 8px;
+    color: #24292f;
 
     :global(.anticon) {
-      font-size: 36px;
+      font-size: 20px;
+      color: #c9a26d;
     }
   }
 
   p {
-    margin: 0;
-    font-size: 16px;
-    opacity: 0.95;
+    display: none;
   }
 }
 
 .content {
-  padding: 40px;
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .section {
-  margin-bottom: 40px;
+  margin-bottom: 20px;
 
   &:last-child {
     margin-bottom: 0;
@@ -54,30 +58,30 @@
 }
 
 .sectionTitle {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 20px;
+  color: #24292f;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e5e7eb;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e8dcc8;
 
   :global(.anticon) {
-    color: #4f46e5;
-    font-size: 22px;
+    color: #c9a26d;
+    font-size: 14px;
   }
 }
 
 .emptyState {
   text-align: center;
-  padding: 80px 20px;
+  padding: 40px 20px;
   color: #9ca3af;
 
   .icon {
-    font-size: 64px;
-    margin-bottom: 20px;
+    font-size: 48px;
+    margin-bottom: 12px;
     opacity: 0.5;
 
     :global(.anticon) {
@@ -86,7 +90,7 @@
   }
 
   p {
-    font-size: 16px;
+    font-size: 14px;
     margin: 0;
   }
 }
