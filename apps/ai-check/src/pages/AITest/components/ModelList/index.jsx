@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button, Space } from 'antd';
 import { RocketOutlined, CopyOutlined } from '@ant-design/icons';
-import ModelCard from './ModelCard';
-import styles from './ModelList.module.less';
+import ModelCard from '../ModelCard';
+import styles from './index.module.less';
 
 export default function ModelList({
   models,

@@ -1,12 +1,12 @@
 import React from 'react';
-import { Tag, Button, Space, Spin } from 'antd';
+import { Tag, Button, Spin } from 'antd';
 import {
   CopyOutlined,
   MessageOutlined,
   FileImageOutlined,
   ToolOutlined
 } from '@ant-design/icons';
-import styles from './TestResults.module.less';
+import styles from './index.module.less';
 
 export default function TestResults({ testResults, onCopyResult }) {
   const getModelType = (modelId) => {

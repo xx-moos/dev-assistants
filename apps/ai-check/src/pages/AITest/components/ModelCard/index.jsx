@@ -6,7 +6,7 @@ import {
   FileImageOutlined,
   ToolOutlined
 } from '@ant-design/icons';
-import styles from './ModelCard.module.less';
+import styles from './index.module.less';
 
 export default function ModelCard({ model, isSelected, status, result, onToggle }) {
   const getModelType = (modelId) => {

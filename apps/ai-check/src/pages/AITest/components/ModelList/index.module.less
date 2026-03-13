@@ -1,3 +1,4 @@
+// 简约列表样式 - 去掉那些SB渐变
 .modelList {
   width: 100%;
 }
@@ -14,16 +15,21 @@
     }
 
     .ant-btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #4f46e5;
       border: none;
+
+      &:hover {
+        background: #4338ca;
+      }
     }
 
     .ant-btn-default {
       border-color: #e5e7eb;
+      color: #6b7280;
 
       &:hover {
-        border-color: #667eea;
-        color: #667eea;
+        border-color: #4f46e5;
+        color: #4f46e5;
       }
     }
   }
@@ -35,31 +41,35 @@
   align-items: center;
   margin-bottom: 20px;
   padding: 16px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: #f9fafb;
   border-radius: 12px;
+  border: 1px solid #e5e7eb;
 
   :global {
     .ant-btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #4f46e5;
       border: none;
       border-radius: 8px;
       font-weight: 500;
       height: 40px;
 
       &:hover {
-        background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        background: #4338ca;
+      }
+
+      &:active {
+        background: #3730a3;
       }
     }
 
     .ant-btn-default {
       border-radius: 8px;
       border-color: #e5e7eb;
+      color: #6b7280;
 
       &:hover {
-        border-color: #667eea;
-        color: #667eea;
+        border-color: #4f46e5;
+        color: #4f46e5;
       }
     }
   }

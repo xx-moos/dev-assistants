@@ -1,7 +1,7 @@
 import React from 'react';
 import { Form, Input, Button, Space } from 'antd';
 import { ApiOutlined, RocketOutlined } from '@ant-design/icons';
-import styles from './ConfigForm.module.less';
+import styles from './index.module.less';
 
 const { TextArea } = Input;
 

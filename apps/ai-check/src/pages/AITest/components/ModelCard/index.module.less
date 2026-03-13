@@ -1,37 +1,38 @@
+// 简约卡片样式 - 不搞那些花里胡哨的渐变
 .modelCard {
   background: #fff;
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   padding: 16px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 
   &:hover {
-    border-color: #667eea;
+    border-color: #4f46e5;
     transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.15);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
   }
 
   &.selected {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    border-color: #4f46e5;
+    background: #f5f3ff;
   }
 
   &.testing {
-    border-color: #faad14;
+    border-color: #f59e0b;
     animation: pulse 2s infinite;
   }
 
   &.success {
-    border-color: #52c41a;
+    border-color: #10b981;
   }
 
   &.partial {
-    border-color: #faad14;
+    border-color: #f59e0b;
   }
 
   &.failed {
-    border-color: #ff4d4f;
+    border-color: #ef4444;
   }
 }
 
@@ -47,7 +48,7 @@
   align-items: center;
   font-weight: 600;
   font-size: 14px;
-  color: #1a1a1a;
+  color: #1f2937;
   flex: 1;
 
   span {
@@ -59,7 +60,7 @@
 
 .checkIcon {
   margin-right: 8px;
-  color: #667eea;
+  color: #4f46e5;
   font-size: 16px;
 }
 
@@ -71,22 +72,22 @@
   border: none;
 
   &.gpt {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: #10b981;
     color: #fff;
   }
 
   &.claude {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    background: #f59e0b;
     color: #fff;
   }
 
   &.gemini {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background: #3b82f6;
     color: #fff;
   }
 
   &.other {
-    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    background: #6b7280;
     color: #fff;
   }
 }
@@ -106,9 +107,9 @@
 
 @keyframes pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.4);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(250, 173, 20, 0);
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
   }
 }
