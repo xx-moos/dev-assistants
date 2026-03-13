@@ -1,0 +1,120 @@
+.testResults {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.resultCard {
+  background: #fff;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+  }
+}
+
+.resultHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.modelInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modelName {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.modelType {
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: none;
+
+  &.gpt {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+  }
+
+  &.claude {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+  }
+
+  &.gemini {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+  }
+
+  &.other {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: #fff;
+  }
+}
+
+.resultBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.testItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.testTag {
+  align-self: flex-start;
+  border-radius: 6px;
+  font-weight: 500;
+  border: none;
+}
+
+.testContent {
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.successText {
+  color: #374151;
+}
+
+.errorText {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.usage {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.codeBlock {
+  background: #1f2937;
+  color: #e5e7eb;
+  padding: 12px;
+  border-radius: 6px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}

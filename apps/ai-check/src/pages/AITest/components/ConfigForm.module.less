@@ -1,0 +1,43 @@
+.configForm {
+  :global {
+    .ant-form-item-label > label {
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .ant-input,
+    .ant-input-password {
+      border-radius: 8px;
+
+      &:hover, &:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+      }
+    }
+
+    .ant-btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 8px;
+      font-weight: 500;
+      height: 40px;
+
+      &:hover {
+        background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+    }
+
+    .ant-btn-default {
+      border-radius: 8px;
+      border-color: #e5e7eb;
+      height: 40px;
+
+      &:hover {
+        border-color: #667eea;
+        color: #667eea;
+      }
+    }
+  }
+}

@@ -1,0 +1,114 @@
+.modelCard {
+  background: #fff;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.15);
+  }
+
+  &.selected {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  }
+
+  &.testing {
+    border-color: #faad14;
+    animation: pulse 2s infinite;
+  }
+
+  &.success {
+    border-color: #52c41a;
+  }
+
+  &.partial {
+    border-color: #faad14;
+  }
+
+  &.failed {
+    border-color: #ff4d4f;
+  }
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.modelName {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a1a1a;
+  flex: 1;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.checkIcon {
+  margin-right: 8px;
+  color: #667eea;
+  font-size: 16px;
+}
+
+.modelType {
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: none;
+
+  &.gpt {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+  }
+
+  &.claude {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+  }
+
+  &.gemini {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+  }
+
+  &.other {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: #fff;
+  }
+}
+
+.testStatus {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.statusBadge {
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 2px 8px;
+  border: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(250, 173, 20, 0);
+  }
+}

@@ -16,6 +16,13 @@ const MENU_ITEMS = [
     accent: "linear-gradient(135deg, #b45309 0%, #f59e0b 100%)",
     badge: "已就绪",
   },
+  {
+    title: "AITest",
+    description: "AITest",
+    to: "/ai-test",
+    accent: "linear-gradient(135deg, #b45309 0%, #f59e0b 100%)",
+    badge: "已就绪",
+  },
 ];
 
 const Home = () => (
