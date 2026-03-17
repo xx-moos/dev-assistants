@@ -22,8 +22,7 @@ import { Link } from "react-router-dom";
 import History from "../History";
 import { fetchModelList } from "../../../../utils/aiTest";
 
-export default function ConfigCard({ fetchModelListCallback }) {
-  const [form] = Form.useForm();
+export default function ConfigCard({ fetchModelListCallback, form }) {
 
   return (
     <ConfigProvider

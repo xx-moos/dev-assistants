@@ -8,6 +8,8 @@ export default function ModelCard({ allModels, changeModelCallback }) {
   const state = useReactive({
     activeKey: "1",
     models: [],
+
+    ids: [],
   });
 
   useEffect(() => {
@@ -16,6 +18,7 @@ export default function ModelCard({ allModels, changeModelCallback }) {
 
   return (
     <>
+      <div></div>
       <Tabs
         items={[
           {
@@ -39,12 +42,24 @@ export default function ModelCard({ allModels, changeModelCallback }) {
           state.activeKey = key;
           state.models = allModels.filter((item) => item.owned_by === key);
         }}
+        tabBarExtraContent={
+          <a
+            onClick={() => {
+              state.ids = [];
+            }}
+          >
+            清除选择的模型
+          </a>
+        }
       />
+
       <div style={{ maxHeight: 220, overflowY: "auto" }}>
         <Checkbox.Group
           onChange={(value) => {
+            state.ids = value;
             changeModelCallback.emit(value);
           }}
+          value={state.ids}
         >
           <Row gutter={[0, 8]}>
             {state.models.map((item) => (

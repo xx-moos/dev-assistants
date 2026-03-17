@@ -1,30 +1,6 @@
-import React, { useEffect } from "react";
-import {
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  ConfigProvider,
-  Divider,
-  Flex,
-  Form,
-  Input,
-  Row,
-  Select,
-  Space,
-  Tabs,
-  Typography,
-} from "antd";
-import {
-  ArrowLeftOutlined,
-  PullRequestOutlined,
-  SaveOutlined,
-} from "@ant-design/icons";
-import { Link } from "react-router-dom";
-import History from "../History";
-import { fetchModelList } from "../../../../utils/aiTest";
+import React from "react";
+import { Button, Checkbox, Col, Divider, Row } from "antd";
 import { useReactive } from "ahooks";
-import styles from "./index.module.less";
 
 export default function TestTypeCard({ changeTestTypeCallback }) {
   const state = useReactive({
@@ -55,6 +31,23 @@ export default function TestTypeCard({ changeTestTypeCallback }) {
         </Row>
       </Checkbox.Group>
       <Divider />
+      <div style={{ marginBottom: 12 }}>
+        <a
+          onClick={() => {
+            state.selectedTypes = ["text", "image", "codex", "cc"];
+          }}
+        >
+          全选
+        </a>
+        &nbsp;
+        <a
+          onClick={() => {
+            state.selectedTypes = [];
+          }}
+        >
+          清除
+        </a>
+      </div>
       <Button
         type="primary"
         block
