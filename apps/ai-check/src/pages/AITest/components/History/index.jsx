@@ -1,26 +1,10 @@
 import React from "react";
-import {
-  Button,
-  Card,
-  Col,
-  ConfigProvider,
-  Form,
-  Input,
-  Row,
-  Select,
-  Space,
-  Typography,
-} from "antd";
-import {
-  ArrowLeftOutlined,
-  PullRequestOutlined,
-  SaveOutlined,
-} from "@ant-design/icons";
-import { Link } from "react-router-dom";
+import { Button, Select, Space } from "antd";
 import { useLocalStorageState } from "ahooks";
+import { LOCAL_KEY } from "../../constant";
 
 export default function History(changeCallback) {
-  const [history] = useLocalStorageState("ai-check-history", {
+  const [history] = useLocalStorageState(LOCAL_KEY, {
     defaultValue: [],
   });
 
