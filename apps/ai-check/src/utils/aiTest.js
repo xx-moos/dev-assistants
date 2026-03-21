@@ -1,4 +1,5 @@
 import axios from "axios";
+const MAX_TIME = 5 * 1000;
 
 // 文本测试
 export const testTextCapability = async (url, apiKey, modelId) => {
@@ -12,7 +13,7 @@ export const testTextCapability = async (url, apiKey, modelId) => {
       },
       {
         headers: { Authorization: `Bearer ${apiKey}` },
-        timeout: 30000,
+        timeout: MAX_TIME,
       }
     );
 
@@ -59,7 +60,7 @@ export const testImageCapability = async (url, apiKey, modelId) => {
       },
       {
         headers: { Authorization: `Bearer ${apiKey}` },
-        timeout: 30000,
+        timeout: MAX_TIME,
       }
     );
 
@@ -80,14 +81,14 @@ export const testImageCapability = async (url, apiKey, modelId) => {
   }
 };
 
-// codex 调用测试
+// codex 调用测试 - 使用 OpenAI Responses API
 export const testCodexCliCapability = async (url, apiKey, modelId) => {
   try {
     const response = await axios.post(
       `${url}/v1/responses`,
       {
         model: modelId,
-        input: "使用计算工具计算 0.2 + 0.1 是多少? ",
+        input: "使用计算工具计算3+2-5是多少? ",
         tools: [
           {
             type: "function",
@@ -102,25 +103,35 @@ export const testCodexCliCapability = async (url, apiKey, modelId) => {
             },
           },
         ],
-        stream: true,
       },
       {
         headers: { Authorization: `Bearer ${apiKey}` },
-        timeout: 30000,
+        timeout: MAX_TIME,
       }
     );
 
-    // 艹，安全检查
-    if (!response.data?.choices?.[0]?.message) {
+    // Responses API 返回的是 output 数组，别tm用 choices 格式去解析
+    if (!response.data?.output) {
       throw new Error("返回数据格式错误");
     }
 
-    const hasToolCall = response.data.choices[0].message.tool_calls?.length > 0;
+    const output = response.data.output;
+
+    // 捞工具调用
+    const toolCalls = output.filter((item) => item.type === "function_call");
+    const hasToolCall = toolCalls.length > 0;
+
+    // 捞模型的文本回答
+    const messageItem = output.find((item) => item.type === "message");
+    const textContent = messageItem?.content
+      ?.filter((c) => c.type === "output_text")
+      .map((c) => c.text)
+      .join("") || "";
+
     return {
       status: hasToolCall ? "success" : "failed",
-      content: hasToolCall
-        ? JSON.stringify(response.data.choices[0].message.tool_calls, null, 2)
-        : "模型未调用工具",
+      content: textContent || (hasToolCall ? "模型调用了工具但未返回文本" : "模型未调用工具"),
+      toolCalls: hasToolCall ? toolCalls : [],
       hasToolCall,
     };
   } catch (error) {
@@ -131,7 +142,7 @@ export const testCodexCliCapability = async (url, apiKey, modelId) => {
   }
 };
 
-// ClaudeCode测试 - 测试代码生成能力
+// ClaudeCode测试 - 使用 Anthropic Messages API 测试代码生成能力
 export const testClaudeCodeCapability = async (url, apiKey, modelId) => {
   try {
     const response = await axios.post(
@@ -153,16 +164,16 @@ export const testClaudeCodeCapability = async (url, apiKey, modelId) => {
           "x-api-key": apiKey,
           "anthropic-version": "2023-06-01",
         },
-        timeout: 30000, // 30 秒超时
+        timeout: MAX_TIME,
       }
     );
 
-    // 艹，安全检查
-    if (!response.data?.choices?.[0]?.message?.content) {
+    // Anthropic Messages API 返回 content 数组，别再用 OpenAI 格式解析了
+    if (!response.data?.content?.[0]?.text) {
       throw new Error("返回数据格式错误");
     }
 
-    const content = response.data.choices[0].message.content;
+    const content = response.data.content[0].text;
     // 检查是否包含代码块
     const hasCode =
       content.includes("```") ||
