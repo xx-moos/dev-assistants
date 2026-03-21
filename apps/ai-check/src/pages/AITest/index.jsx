@@ -126,6 +126,32 @@ export default function Index() {
           fetchModelListCallback={(models) => {
             state.allModels = models;
           }}
+          saveRemarkCallback={({ url, token, remark }) => {
+            const idx = history.findIndex(
+              (h) => h.url === url && h.token === token
+            );
+            if (idx === -1) {
+              // 历史记录里没有这条，直接新建一条塞进去
+              const { name } = form.getFieldsValue();
+              setHistory([
+                {
+                  id: Date.now().toString(),
+                  url,
+                  token,
+                  name: name || url.slice(0, 20),
+                  remark,
+                  createdAt: new Date().toISOString(),
+                },
+                ...history,
+              ]);
+              message.success("备注已保存（新建历史记录）");
+            } else {
+              const updated = [...history];
+              updated[idx] = { ...updated[idx], remark };
+              setHistory(updated);
+              message.success("备注已更新");
+            }
+          }}
         />
 
         <CenterCard

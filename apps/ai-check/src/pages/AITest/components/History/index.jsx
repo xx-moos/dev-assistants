@@ -79,6 +79,7 @@ export default function History({ history = [], setHistory, onSelect }) {
 
   return (
     <Space size="small">
+      历史记录
       <Select
         style={{ width: 360 }}
         options={history.map((item) => ({

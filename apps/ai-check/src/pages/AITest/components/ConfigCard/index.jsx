@@ -27,6 +27,7 @@ export default function ConfigCard({
   form,
   history,
   setHistory,
+  saveRemarkCallback,
 }) {
 
   return (
@@ -76,15 +77,9 @@ export default function ConfigCard({
         }}
       >
         <Form
-          size="middle"
+          size="large"
           autoComplete="off"
           form={form}
-          initialValues={{
-            url: "https://ai.hybgzs.com",
-            token:
-              "sk-lPBeiYIkGkh59m1_GDWRr2ANunts8T05lSn_MXDK0tdUymqfDzwMFVh8Gy0",
-            name: "黑与白",
-          }}
         >
           <Row gutter={16}>
             <Col span={4}>
@@ -140,7 +135,22 @@ export default function ConfigCard({
                 >
                   重置
                 </Button>
-                <Button type="primary" icon={<SaveOutlined />}>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={() => {
+                    const { url, token, remark } = form.getFieldsValue();
+                    if (!url || !token) {
+                      message.error("URL和Token都没填，保存个寂寞");
+                      return;
+                    }
+                    if (!remark) {
+                      message.warning("备注为空，写点东西再保存");
+                      return;
+                    }
+                    saveRemarkCallback?.({ url, token, remark });
+                  }}
+                >
                   保存备注
                 </Button>
               </Space>
