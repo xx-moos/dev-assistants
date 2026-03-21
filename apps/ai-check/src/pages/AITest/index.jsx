@@ -1,11 +1,12 @@
 import React from "react";
 import { Form, message } from "antd";
-import { useEventEmitter, useReactive } from "ahooks";
+import { useEventEmitter, useLocalStorageState, useReactive } from "ahooks";
 import styles from "./index.module.less";
 
 import ConfigCard from "./components/ConfigCard";
 import CenterCard from "./components/CenterCard";
 import ResultPanel from "./components/ResultPanel";
+import { LOCAL_KEY } from "./constant";
 import {
   testClaudeCodeCapability,
   testCodexCliCapability,
@@ -25,6 +26,10 @@ export default function Index() {
   const [form] = Form.useForm();
   const changeModel = useEventEmitter();
   const changeTestType = useEventEmitter();
+
+  const [history, setHistory] = useLocalStorageState(LOCAL_KEY, {
+    defaultValue: [],
+  });
 
   const state = useReactive({
     allModels: [],
@@ -90,6 +95,25 @@ export default function Index() {
 
     await Promise.allSettled(promises);
     state.testing = false;
+
+    // 测试跑完了，自动把当前配置存到历史记录
+    const { name, remark } = form.getFieldsValue();
+    const configName = name || `${url.slice(0, 20)}...`;
+    const newEntry = {
+      id: Date.now().toString(),
+      url,
+      token,
+      name: configName,
+      remark: remark || "",
+      createdAt: new Date().toISOString(),
+    };
+
+    // 同url+token的记录直接覆盖，别搞一堆重复的
+    const filtered = history.filter(
+      (h) => !(h.url === url && h.token === token)
+    );
+    setHistory([newEntry, ...filtered]);
+    message.success("测试完成，配置已自动保存到历史记录");
   });
 
   return (
@@ -97,6 +121,8 @@ export default function Index() {
       <div className={styles.center}>
         <ConfigCard
           form={form}
+          history={history}
+          setHistory={setHistory}
           fetchModelListCallback={(models) => {
             state.allModels = models;
           }}

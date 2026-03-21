@@ -22,7 +22,12 @@ import { Link } from "react-router-dom";
 import History from "../History";
 import { fetchModelList } from "../../../../utils/aiTest";
 
-export default function ConfigCard({ fetchModelListCallback, form }) {
+export default function ConfigCard({
+  fetchModelListCallback,
+  form,
+  history,
+  setHistory,
+}) {
 
   return (
     <ConfigProvider
@@ -51,12 +56,14 @@ export default function ConfigCard({ fetchModelListCallback, form }) {
             </Space>
 
             <History
-              changeCallback={(value) => {
+              history={history}
+              setHistory={setHistory}
+              onSelect={(item) => {
                 form.setFieldsValue({
-                  url: value?.url,
-                  token: value?.token,
-                  name: value?.name,
-                  remark: value?.remark,
+                  url: item?.url,
+                  token: item?.token,
+                  name: item?.name,
+                  remark: item?.remark,
                 });
               }}
             />
