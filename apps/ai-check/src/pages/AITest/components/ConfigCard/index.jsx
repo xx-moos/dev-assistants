@@ -130,6 +130,7 @@ export default function ConfigCard({
                 <Button
                   onClick={() => {
                     form.resetFields();
+                    fetchModelListCallback?.([]);
                   }}
                   icon={<RedoOutlined />}
                 >
@@ -170,6 +171,20 @@ export default function ConfigCard({
                   placeholder="请输入备注"
                   allowClear
                   variant="filled"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const { url, token, remark } = form.getFieldsValue();
+                      if (!url || !token) {
+                        message.error("URL和Token都没填，保存个寂寞");
+                        return;
+                      }
+                      if (!remark) {
+                        message.warning("备注为空，写点东西再保存");
+                        return;
+                      }
+                      saveRemarkCallback?.({ url, token, remark });
+                    }
+                  }}
                 />
               </Form.Item>
             </Col>
