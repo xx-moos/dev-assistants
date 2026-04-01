@@ -26,21 +26,24 @@ export default function ModelCard({ allModels, changeModelCallback }) {
             label: "全部",
           },
           {
-            key: "OpenAI",
+            key: "gpt,5.4,open,5.3,5",
             label: "OpenAI",
           },
           {
-            key: "Claude",
+            key: "claude,Claude",
             label: "Claude",
           },
           {
-            key: "Gemini",
+            key: "gemini",
             label: "Gemini",
           },
         ]}
         onChange={(key) => {
           state.activeKey = key;
-          state.models = allModels.filter((item) => item.owned_by === key);
+          const keyArr = key.split(",");
+          state.models = allModels.filter((item) =>
+            keyArr.some((k) => item.id.includes(k)),
+          );
         }}
         tabBarExtraContent={
           <a
@@ -53,7 +56,7 @@ export default function ModelCard({ allModels, changeModelCallback }) {
         }
       />
 
-      <div style={{ maxHeight: 220, overflowY: "auto" }}>
+      <div style={{ maxHeight: 90, overflowY: "auto" }}>
         <Checkbox.Group
           onChange={(value) => {
             state.ids = value;
