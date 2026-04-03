@@ -50,6 +50,7 @@ export default function ModelCard({ allModels, changeModelCallback }) {
             <a
               onClick={() => {
                 state.ids = state.models.map((it, ind) => it.id);
+                changeModelCallback.emit(state.ids);
               }}
             >
               全选
