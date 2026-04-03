@@ -59,7 +59,7 @@ export default function Index() {
     // 没选模型？手写的也算
     const { handwritingModel } = form.getFieldsValue();
     const modelIds = [...state.selectedModels].concat(
-      handwritingModel.split(",")
+      handwritingModel?.split(",") || []
     );
 
     if (!modelIds.length) {
