@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Checkbox, Col, Form, Row, Tabs } from "antd";
+import { Checkbox, Col, Form, Row, Space, Tabs } from "antd";
 import { useReactive } from "ahooks";
 
 export default function ModelCard({ allModels, changeModelCallback }) {
