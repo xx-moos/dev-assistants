@@ -37,7 +37,7 @@ export default function CenterCard({
         },
         body: {
           padding: "10px 10px",
-          height: 180,
+          height: 286,
         },
         root: {
           marginBottom: 8,

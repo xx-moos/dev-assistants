@@ -26,15 +26,15 @@ export default function ModelCard({ allModels, changeModelCallback }) {
             label: "全部",
           },
           {
-            key: "gpt,5.4,open,5.3,5",
+            key: "gpt,5.4,open,5.3,5.4,codex",
             label: "OpenAI",
           },
           {
-            key: "claude,Claude",
+            key: "anthropic,claude,Claude,opus,sonnet",
             label: "Claude",
           },
           {
-            key: "gemini",
+            key: "gemini,3-pro,3.1",
             label: "Gemini",
           },
         ]}
@@ -42,21 +42,30 @@ export default function ModelCard({ allModels, changeModelCallback }) {
           state.activeKey = key;
           const keyArr = key.split(",");
           state.models = allModels.filter((item) =>
-            keyArr.some((k) => item.id.includes(k)),
+            keyArr.some((k) => item.id.includes(k))
           );
         }}
         tabBarExtraContent={
-          <a
-            onClick={() => {
-              state.ids = [];
-            }}
-          >
-            清除选择的模型
-          </a>
+          <Space>
+            <a
+              onClick={() => {
+                state.ids = state.models.map((it, ind) => it.id);
+              }}
+            >
+              全选
+            </a>
+            <a
+              onClick={() => {
+                state.ids = [];
+              }}
+            >
+              清除选择的模型
+            </a>
+          </Space>
         }
       />
 
-      <div style={{ maxHeight: 90, overflowY: "auto" }}>
+      <div style={{ maxHeight: 200, overflowY: "auto" }}>
         <Checkbox.Group
           onChange={(value) => {
             state.ids = value;
