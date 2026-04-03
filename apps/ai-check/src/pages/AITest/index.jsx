@@ -58,11 +58,9 @@ export default function Index() {
 
     // 没选模型？手写的也算
     const { handwritingModel } = form.getFieldsValue();
-    const modelIds = state.selectedModels.length
-      ? [...state.selectedModels]
-      : handwritingModel
-        ? [handwritingModel]
-        : [];
+    const modelIds = [...state.selectedModels].concat(
+      handwritingModel.split(",")
+    );
 
     if (!modelIds.length) {
       message.error("至少选一个模型或手动填写模型ID");

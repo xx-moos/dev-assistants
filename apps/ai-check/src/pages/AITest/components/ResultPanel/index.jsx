@@ -62,7 +62,11 @@ function ModelResultCard({ item }) {
           {modelId}
         </span>
         <Tag
-          styles={{ fontSize: 16 }}
+          styles={{
+            root: {
+              fontSize: 16,
+            },
+          }}
           color={
             Object.values(tests).every((t) => t?.status === "success")
               ? "success"
@@ -103,7 +107,7 @@ export default function ResultPanel({ results = [], loading = false }) {
       {loading && (
         <div style={{ textAlign: "center", marginBottom: 8 }}>
           <Spin size="small" />{" "}
-          <span style={{ color: "#999", fontSize: 12 }}>
+          <span style={{ color: "#999", fontSize: 14 }}>
             测试进行中，稳住别慌...
           </span>
         </div>
