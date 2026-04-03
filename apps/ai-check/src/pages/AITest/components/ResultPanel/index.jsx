@@ -37,9 +37,7 @@ function TestResultItem({ type, result }) {
   const isSuccess = result.status === "success";
   const statusCls = isSuccess ? styles.statusSuccess : styles.statusFailed;
   const icon = isSuccess ? <CheckCircleOutlined /> : <CloseCircleOutlined />;
-  const content = isSuccess
-    ? result.content || "通过"
-    : result.error || "失败";
+  const content = isSuccess ? result.content || "通过" : result.error || "失败";
 
   return (
     <div className={styles.testItem}>
@@ -63,7 +61,16 @@ function ModelResultCard({ item }) {
         <span className={styles.modelName} title={modelId}>
           {modelId}
         </span>
-        <Tag color={Object.values(tests).every((t) => t?.status === "success") ? "success" : Object.values(tests).some((t) => t?.status === "failed") ? "error" : "processing"}>
+        <Tag
+          styles={{ fontSize: 16 }}
+          color={
+            Object.values(tests).every((t) => t?.status === "success")
+              ? "success"
+              : Object.values(tests).some((t) => t?.status === "failed")
+              ? "error"
+              : "processing"
+          }
+        >
           {Object.values(tests).filter((t) => t).length}/{testTypes.length}
         </Tag>
       </div>
@@ -95,7 +102,10 @@ export default function ResultPanel({ results = [], loading = false }) {
     <div style={{ marginTop: 8 }}>
       {loading && (
         <div style={{ textAlign: "center", marginBottom: 8 }}>
-          <Spin size="small" /> <span style={{ color: "#999", fontSize: 12 }}>测试进行中，稳住别慌...</span>
+          <Spin size="small" />{" "}
+          <span style={{ color: "#999", fontSize: 12 }}>
+            测试进行中，稳住别慌...
+          </span>
         </div>
       )}
       <div className={styles.resultGrid}>
