@@ -51,6 +51,7 @@ export default function TestTypeCard({ changeTestTypeCallback }) {
       <Button
         type="primary"
         block
+        size="large"
         onClick={() => {
           changeTestTypeCallback.emit(state.selectedTypes);
         }}
