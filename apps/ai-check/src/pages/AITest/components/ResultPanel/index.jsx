@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Spin, Tag, Radio } from "antd";
 import {
   CheckCircleOutlined,
@@ -189,23 +189,17 @@ function FilterBar({ filter, onChange, counts }) {
 export default function ResultPanel({ results = [], loading = false }) {
   const [filter, setFilter] = useState("all");
 
-  // ✅ 用 Map 缓存每个模型的状态，避免重复计算
-  const statusMap = useMemo(() => {
-    const map = new Map();
-    results.forEach((item) => {
-      map.set(item.modelId, getModelStatus(item));
-    });
-    return map;
-  }, [results]);
+  // 每次渲染重新计算状态（results 来自 useReactive proxy，引用不变，useMemo 无法感知深层变更）
+  const statusMap = new Map();
+  results.forEach((item) => {
+    statusMap.set(item.modelId, getModelStatus(item));
+  });
 
   // 计算各状态数量
-  const counts = useMemo(() => {
-    const result = { all: results.length, success: 0, failed: 0, pending: 0 };
-    statusMap.forEach((status) => {
-      result[status]++;
-    });
-    return result;
-  }, [results, statusMap]);
+  const counts = { all: results.length, success: 0, failed: 0, pending: 0 };
+  statusMap.forEach((status) => {
+    counts[status]++;
+  });
 
   // ✅ 当前 filter 下无数据时，自动回退到 "all"
   useEffect(() => {
@@ -215,10 +209,10 @@ export default function ResultPanel({ results = [], loading = false }) {
   }, [counts, filter]);
 
   // 过滤后的结果
-  const filteredResults = useMemo(() => {
-    if (filter === "all") return results;
-    return results.filter((item) => statusMap.get(item.modelId) === filter);
-  }, [results, filter, statusMap]);
+  const filteredResults =
+    filter === "all"
+      ? results
+      : results.filter((item) => statusMap.get(item.modelId) === filter);
 
   if (!results.length) return null;
 

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(pnpm init:*)",
       "Bash(pnpm add:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "mcp__memory__read_graph",
+      "mcp__sequential-thinking__sequentialthinking"
     ]
   }
 }
