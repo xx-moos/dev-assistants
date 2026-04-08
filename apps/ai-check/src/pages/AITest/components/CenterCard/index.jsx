@@ -28,6 +28,7 @@ export default function CenterCard({
   allModels,
   changeModelCallback,
   changeTestTypeCallback,
+  testing,
 }) {
   return (
     <Card
@@ -52,7 +53,7 @@ export default function CenterCard({
           />
         </Col>
         <Col span={12}>
-          <TestTypeCard changeTestTypeCallback={changeTestTypeCallback} />
+          <TestTypeCard changeTestTypeCallback={changeTestTypeCallback} loading={testing} />
         </Col>
       </Row>
     </Card>

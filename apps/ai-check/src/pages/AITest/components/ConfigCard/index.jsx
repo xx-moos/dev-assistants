@@ -7,10 +7,9 @@ import {
   Flex,
   Form,
   Input,
+  message,
   Row,
-  Select,
   Space,
-  Typography,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -19,6 +18,7 @@ import {
   SaveOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
+import { useReactive } from "ahooks";
 import History from "../History";
 import { fetchModelList } from "../../../../utils/aiTest";
 
@@ -29,6 +29,10 @@ export default function ConfigCard({
   setHistory,
   saveRemarkCallback,
 }) {
+  const btnState = useReactive({
+    fetchLoading: false,
+    saveLoading: false,
+  });
 
   return (
     <ConfigProvider
@@ -110,16 +114,17 @@ export default function ConfigCard({
                 <Button
                   type="primary"
                   icon={<PullRequestOutlined />}
+                  loading={btnState.fetchLoading}
                   onClick={async () => {
-                    if (
-                      form.getFieldsValue().url &&
-                      form.getFieldsValue().token
-                    ) {
-                      const res = await fetchModelList(
-                        form.getFieldsValue().url,
-                        form.getFieldsValue().token
-                      );
-                      fetchModelListCallback(res || []);
+                    const { url, token } = form.getFieldsValue();
+                    if (url && token) {
+                      btnState.fetchLoading = true;
+                      try {
+                        const res = await fetchModelList(url, token);
+                        fetchModelListCallback(res || []);
+                      } finally {
+                        btnState.fetchLoading = false;
+                      }
                     } else {
                       message.error("请输入URL和Token");
                     }
@@ -139,7 +144,8 @@ export default function ConfigCard({
                 <Button
                   type="primary"
                   icon={<SaveOutlined />}
-                  onClick={() => {
+                  loading={btnState.saveLoading}
+                  onClick={async () => {
                     const { url, token, remark } = form.getFieldsValue();
                     if (!url || !token) {
                       message.error("URL和Token都没填，保存个寂寞");
@@ -149,7 +155,12 @@ export default function ConfigCard({
                       message.warning("备注为空，写点东西再保存");
                       return;
                     }
-                    saveRemarkCallback?.({ url, token, remark });
+                    btnState.saveLoading = true;
+                    try {
+                      await saveRemarkCallback?.({ url, token, remark });
+                    } finally {
+                      btnState.saveLoading = false;
+                    }
                   }}
                 >
                   保存备注

@@ -2,7 +2,7 @@ import React from "react";
 import { Button, Checkbox, Col, Divider, Row } from "antd";
 import { useReactive } from "ahooks";
 
-export default function TestTypeCard({ changeTestTypeCallback }) {
+export default function TestTypeCard({ changeTestTypeCallback, loading }) {
   const state = useReactive({
     types: [
       { key: "text", label: "文本能力" },
@@ -52,6 +52,7 @@ export default function TestTypeCard({ changeTestTypeCallback }) {
         type="primary"
         block
         size="large"
+        loading={loading}
         onClick={() => {
           changeTestTypeCallback.emit(state.selectedTypes);
         }}

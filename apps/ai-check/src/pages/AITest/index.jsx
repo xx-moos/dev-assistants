@@ -156,6 +156,7 @@ export default function Index() {
           allModels={state.allModels}
           changeModelCallback={changeModel}
           changeTestTypeCallback={changeTestType}
+          testing={state.testing}
         />
 
         <ResultPanel results={state.results} loading={state.testing} />
