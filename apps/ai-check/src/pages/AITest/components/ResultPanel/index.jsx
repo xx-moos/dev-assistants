@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Spin, Tag, Radio } from "antd";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   LoadingOutlined,
 } from "@ant-design/icons";
+import { useReactive } from "ahooks";
 import CopyableText from "../CopyableText";
 import styles from "./index.module.less";
 
@@ -16,67 +17,78 @@ const TEST_TYPE_LABELS = {
   cc: "Claude Code",
 };
 
-/** 过滤选项 */
-const FILTER_OPTIONS = {
-  all: "全部",
-  success: "仅成功",
-  failed: "仅失败",
-  pending: "进行中",
+/** 状态配置：统一管理颜色、图标、Tag 色值、样式类名 */
+const STATUS_CONFIG = {
+  success: {
+    icon: <CheckCircleOutlined />,
+    color: "#52c41a",
+    tagColor: "success",
+    cls: "statusSuccess",
+  },
+  failed: {
+    icon: <CloseCircleOutlined />,
+    color: "#ff4d4f",
+    tagColor: "error",
+    cls: "statusFailed",
+  },
+  pending: {
+    icon: <LoadingOutlined />,
+    color: "#1890ff",
+    tagColor: "processing",
+    cls: "statusLoading",
+  },
 };
 
-/**
- * 判断单个模型的状态
- * 只关注 testTypes 中声明的测试项，忽略 tests 对象中多余的 key
- */
+/** 过滤选项配置 */
+const FILTER_OPTIONS = [
+  { value: "all", label: "全部" },
+  { value: "success", label: "成功" },
+  { value: "failed", label: "失败" },
+  { value: "pending", label: "进行中" },
+];
+
+/** 过滤选项文案映射，用于空状态提示 */
+const FILTER_LABEL_MAP = Object.fromEntries(
+  FILTER_OPTIONS.map((o) => [o.value, o.label])
+);
+
+/** 判断单个模型状态，只关注 testTypes 中声明的测试项 */
 function getModelStatus(item) {
   const { tests, testTypes } = item;
 
-  if (!testTypes || testTypes.length === 0) {
-    return "pending";
-  }
+  if (!testTypes?.length) return "pending";
 
   const relevantResults = testTypes.map((type) => tests[type]).filter(Boolean);
 
-  // 还没有完成任何测试
-  if (relevantResults.length === 0) {
-    return "pending";
-  }
+  if (relevantResults.length === 0) return "pending";
 
-  // 所有声明的测试项都已返回结果（不管成功还是失败）
-  const allDone = relevantResults.length === testTypes.length;
+  if (relevantResults.some((t) => t.status === "failed")) return "failed";
 
-  // 有任何一个失败 → failed
-  const hasFailed = relevantResults.some((t) => t.status === "failed");
-  if (hasFailed) {
-    return "failed";
-  }
-
-  // 全部完成且全部成功
-  if (allDone && relevantResults.every((t) => t.status === "success")) {
+  if (
+    relevantResults.length === testTypes.length &&
+    relevantResults.every((t) => t.status === "success")
+  ) {
     return "success";
   }
 
-  // 部分完成、暂无失败 → 进行中
   return "pending";
 }
 
-/**
- * 根据模型状态返回 Tag 颜色
- */
-function getStatusTagColor(status) {
-  switch (status) {
-    case "success":
-      return "success";
-    case "failed":
-      return "error";
-    default:
-      return "processing";
-  }
+/** 计算 statusMap 和各状态计数 */
+function computeStatusCounts(results) {
+  const statusMap = new Map();
+  const counts = { all: results.length, success: 0, failed: 0, pending: 0 };
+
+  results.forEach((item) => {
+    const status = getModelStatus(item);
+    statusMap.set(item.modelId, status);
+    counts[status]++;
+  });
+
+  return { statusMap, counts };
 }
 
-/**
- * 单个测试结果项
- */
+/** 单个测试结果项 */
 function TestResultItem({ type, result }) {
   const label = TEST_TYPE_LABELS[type] || type;
 
@@ -92,28 +104,25 @@ function TestResultItem({ type, result }) {
   }
 
   const isSuccess = result.status === "success";
-  const statusCls = isSuccess ? styles.statusSuccess : styles.statusFailed;
-  const icon = isSuccess ? <CheckCircleOutlined /> : <CloseCircleOutlined />;
+  const cfg = STATUS_CONFIG[isSuccess ? "success" : "failed"];
   const content = isSuccess ? result.content || "通过" : result.error || "失败";
 
   return (
     <div className={styles.testItem}>
-      <span className={`${styles.testLabel} ${statusCls}`}>
-        {icon} {label}
+      <span className={`${styles.testLabel} ${styles[cfg.cls]}`}>
+        {cfg.icon} {label}
       </span>
       <span className={styles.testContent}>{content}</span>
     </div>
   );
 }
 
-/**
- * 单个模型的结果卡片
- * ✅ 复用 getModelStatus，保证 Tag 颜色与过滤器逻辑一致
- */
+/** 单个模型的结果卡片 */
 function ModelResultCard({ item }) {
   const { modelId, url, token, tests, testTypes } = item;
   const status = getModelStatus(item);
   const completedCount = testTypes.filter((type) => tests[type]).length;
+  const { tagColor } = STATUS_CONFIG[status];
 
   return (
     <div className={styles.resultCard}>
@@ -121,10 +130,7 @@ function ModelResultCard({ item }) {
         <span className={styles.modelName} title={modelId}>
           {modelId}
         </span>
-        <Tag
-          styles={{ root: { fontSize: 16 } }}
-          color={getStatusTagColor(status)}
-        >
+        <Tag styles={{ root: { fontSize: 16 } }} color={tagColor}>
           {completedCount}/{testTypes.length}
         </Tag>
       </div>
@@ -144,9 +150,7 @@ function ModelResultCard({ item }) {
   );
 }
 
-/**
- * 过滤器组件
- */
+/** 过滤器组件，通过配置驱动渲染 */
 function FilterBar({ filter, onChange, counts }) {
   return (
     <div className={styles.filterBar}>
@@ -156,70 +160,39 @@ function FilterBar({ filter, onChange, counts }) {
         optionType="button"
         buttonStyle="solid"
       >
-        <Radio.Button value="all">
-          {FILTER_OPTIONS.all} ({counts.all})
-        </Radio.Button>
-        <Radio.Button value="success">
-          <CheckCircleOutlined
-            style={{ color: filter === "success" ? "#fff" : "#52c41a" }}
-          />{" "}
-          {FILTER_OPTIONS.success} ({counts.success})
-        </Radio.Button>
-        <Radio.Button value="failed">
-          <CloseCircleOutlined
-            style={{ color: filter === "failed" ? "#fff" : "#ff4d4f" }}
-          />{" "}
-          {FILTER_OPTIONS.failed} ({counts.failed})
-        </Radio.Button>
-        <Radio.Button value="pending">
-          <LoadingOutlined
-            style={{ color: filter === "pending" ? "#fff" : "#1890ff" }}
-          />{" "}
-          {FILTER_OPTIONS.pending} ({counts.pending})
-        </Radio.Button>
+        {FILTER_OPTIONS.map(({ value, label }) => {
+          return (
+            <Radio.Button key={value} value={value}>
+              {label} ({counts[value]})
+            </Radio.Button>
+          );
+        })}
       </Radio.Group>
     </div>
   );
 }
 
-/**
- * 测试结果面板
- */
+/** 测试结果面板 */
 export default function ResultPanel({ results = [], loading = false }) {
-  const [filter, setFilter] = useState("all");
+  const state = useReactive({ filter: "all" });
 
-  // 每次渲染重新计算状态（results 来自 useReactive proxy，引用不变，useMemo 无法感知深层变更）
-  const statusMap = new Map();
-  results.forEach((item) => {
-    statusMap.set(item.modelId, getModelStatus(item));
-  });
+  // results 来自 useReactive proxy，引用不变，每次渲染重新计算
+  const { statusMap, counts } = computeStatusCounts(results);
 
-  // 计算各状态数量
-  const counts = { all: results.length, success: 0, failed: 0, pending: 0 };
-  statusMap.forEach((status) => {
-    counts[status]++;
-  });
-
-  // 当前 filter 下无数据且测试已结束时，自动回退到 "all"
-  // 仅在 loading 结束后回退，避免测试过程中抢夺用户选择
-  const currentFilterCount = counts[filter] ?? 0;
-  useEffect(() => {
-    if (!loading && filter !== "all" && currentFilterCount === 0 && counts.all > 0) {
-      setFilter("all");
-    }
-  }, [loading, filter, currentFilterCount, counts.all]);
-
-  // 过滤后的结果
   const filteredResults =
-    filter === "all"
+    state.filter === "all"
       ? results
-      : results.filter((item) => statusMap.get(item.modelId) === filter);
+      : results.filter((item) => statusMap.get(item.modelId) === state.filter);
 
   if (!results.length) return null;
 
   return (
     <div style={{ marginTop: 8 }}>
-      <FilterBar filter={filter} onChange={setFilter} counts={counts} />
+      <FilterBar
+        filter={state.filter}
+        onChange={(val) => (state.filter = val)}
+        counts={counts}
+      />
 
       {loading && (
         <div style={{ textAlign: "center", marginBottom: 8, marginTop: 8 }}>
@@ -232,7 +205,7 @@ export default function ResultPanel({ results = [], loading = false }) {
 
       {filteredResults.length === 0 ? (
         <div style={{ textAlign: "center", padding: "20px 0", color: "#999" }}>
-          暂无{FILTER_OPTIONS[filter]}的结果
+          暂无{FILTER_LABEL_MAP[state.filter]}的结果
         </div>
       ) : (
         <div className={styles.resultGrid}>
