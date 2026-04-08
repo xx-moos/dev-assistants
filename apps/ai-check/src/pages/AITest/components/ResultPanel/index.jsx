@@ -31,12 +31,10 @@ const FILTER_OPTIONS = {
 function getModelStatus(item) {
   const { tests, testTypes } = item;
 
-  // 防御：testTypes 为空或不存在
   if (!testTypes || testTypes.length === 0) {
     return "pending";
   }
 
-  // ✅ 只取 testTypes 中声明的测试结果，避免 tests 中有多余 key 干扰
   const relevantResults = testTypes.map((type) => tests[type]).filter(Boolean);
 
   // 还没有完成任何测试
@@ -44,20 +42,21 @@ function getModelStatus(item) {
     return "pending";
   }
 
-  // 有任何一个失败 → 优先判定为 failed（不管是否全部完成）
-  if (relevantResults.some((t) => t.status === "failed")) {
+  // 所有声明的测试项都已返回结果（不管成功还是失败）
+  const allDone = relevantResults.length === testTypes.length;
+
+  // 有任何一个失败 → failed
+  const hasFailed = relevantResults.some((t) => t.status === "failed");
+  if (hasFailed) {
     return "failed";
   }
 
   // 全部完成且全部成功
-  if (
-    relevantResults.length === testTypes.length &&
-    relevantResults.every((t) => t.status === "success")
-  ) {
+  if (allDone && relevantResults.every((t) => t.status === "success")) {
     return "success";
   }
 
-  // 其余情况：还在进行中
+  // 部分完成、暂无失败 → 进行中
   return "pending";
 }
 
@@ -201,12 +200,14 @@ export default function ResultPanel({ results = [], loading = false }) {
     counts[status]++;
   });
 
-  // ✅ 当前 filter 下无数据时，自动回退到 "all"
+  // 当前 filter 下无数据且测试已结束时，自动回退到 "all"
+  // 仅在 loading 结束后回退，避免测试过程中抢夺用户选择
+  const currentFilterCount = counts[filter] ?? 0;
   useEffect(() => {
-    if (filter !== "all" && counts[filter] === 0 && counts.all > 0) {
+    if (!loading && filter !== "all" && currentFilterCount === 0 && counts.all > 0) {
       setFilter("all");
     }
-  }, [counts, filter]);
+  }, [loading, filter, currentFilterCount, counts.all]);
 
   // 过滤后的结果
   const filteredResults =
