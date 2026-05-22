@@ -3,13 +3,6 @@ import { Link } from "react-router-dom";
 
 const MENU_ITEMS = [
   {
-    title: "模型测试",
-    description: "配置 API Token、选择模型并串行测试能力表现。",
-    to: "/model-test",
-    accent: "linear-gradient(135deg, #2563eb 0%, #38bdf8 100%)",
-    badge: "已就绪",
-  },
-  {
     title: "翻译命名文件",
     description: "接入谷歌翻译并生成多语言开发命名文件或者变量。",
     to: "/translation-naming",

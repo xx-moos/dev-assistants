@@ -86,7 +86,7 @@ export default function ConfigCard({
           form={form}
         >
           <Row gutter={16}>
-            <Col span={4}>
+            <Col span={6}>
               <Form.Item name="url" label="URL">
                 <Input
                   placeholder="请输入URL"
@@ -95,7 +95,7 @@ export default function ConfigCard({
                 />
               </Form.Item>
             </Col>
-            <Col span={4}>
+            <Col span={6}>
               <Form.Item name="token" label="Token">
                 <Input
                   placeholder="请输入Token"
@@ -104,12 +104,12 @@ export default function ConfigCard({
                 />
               </Form.Item>
             </Col>
-            <Col span={4}>
+            <Col span={6}>
               <Form.Item name="name" label="名称">
                 <Input placeholder="请输入名称" allowClear variant="filled" />
               </Form.Item>
             </Col>
-            <Col span={5}>
+            <Col span={6}>
               <Space>
                 <Button
                   type="primary"

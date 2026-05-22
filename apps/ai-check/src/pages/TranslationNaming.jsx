@@ -290,8 +290,8 @@ const TranslationNaming = () => {
         <Link style={styles.backLink} to="/">
           ← 返回菜单
         </Link>
+        <h1 style={styles.title}>翻译文件命名生成器</h1>
       </div>
-      <h1 style={styles.title}>翻译文件命名生成器</h1>
 
       <section style={styles.card}>
         <h2 style={styles.subtitle}>翻译配置</h2>
@@ -412,7 +412,9 @@ const styles = {
   },
   navRow: {
     display: "flex",
-    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 6,
   },
   backLink: {
     textDecoration: "none",
@@ -420,7 +422,7 @@ const styles = {
     fontSize: 14,
     fontWeight: 600,
   },
-  title: { fontSize: 18, marginBottom: 6 },
+  title: { fontSize: 18, margin: 0 },
   subtitle: { fontSize: 18, margin: "0 0 12px 0" },
   card: {
     border: "1px solid #c8d1dc",
