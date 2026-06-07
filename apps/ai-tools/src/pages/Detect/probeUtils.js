@@ -1,4 +1,5 @@
-const REQUEST_TIMEOUT = 45000;
+const REQUEST_TIMEOUT = 15 * 1000;
+export const REQUEST_TIMEOUT_MESSAGE = `请求超时，已停止请求（${REQUEST_TIMEOUT / 1000}s）`;
 const MAX_OUTPUT_LENGTH = 160;
 export const DEFAULT_CHECKS = ['text'];
 export const checkOptions = [
@@ -18,6 +19,8 @@ export const checkNameMap = checkOptions.reduce((map, option) => {
 export const normalizeBaseUrl = (url) => url.trim().replace(/\/+$/, '');
 // 拼接接口路径
 const buildApiUrl = (baseUrl, path) => `${normalizeBaseUrl(baseUrl)}${path}`;
+// 判断超时错误
+const isTimeoutError = (error) => error?.name === 'AbortError' || error?.message === REQUEST_TIMEOUT_MESSAGE;
 // 脱敏令牌文本
 export const maskToken = (token) => {
   const trimmedToken = token.trim();
@@ -60,7 +63,7 @@ const parseErrorMessage = async (response) => {
 // 发送 JSON 请求
 const requestJson = async ({ baseUrl, token, path, body, method = 'POST' }) => {
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+  const timer = window.setTimeout(() => controller.abort(new Error(REQUEST_TIMEOUT_MESSAGE)), REQUEST_TIMEOUT);
   try {
     const response = await fetch(buildApiUrl(baseUrl, path), {
       method,
@@ -77,6 +80,12 @@ const requestJson = async ({ baseUrl, token, path, body, method = 'POST' }) => {
       throw new Error(errorMessage);
     }
     return response.json();
+  } catch (error) {
+    // 超时边界
+    if (isTimeoutError(error)) {
+      throw new Error(REQUEST_TIMEOUT_MESSAGE);
+    }
+    throw error;
   } finally {
     window.clearTimeout(timer);
   }
@@ -84,7 +93,7 @@ const requestJson = async ({ baseUrl, token, path, body, method = 'POST' }) => {
 // 发送流式请求
 const requestStream = async ({ baseUrl, token, body }) => {
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+  const timer = window.setTimeout(() => controller.abort(new Error(REQUEST_TIMEOUT_MESSAGE)), REQUEST_TIMEOUT);
   try {
     const response = await fetch(buildApiUrl(baseUrl, '/v1/chat/completions'), {
       method: 'POST',
@@ -108,6 +117,12 @@ const requestStream = async ({ baseUrl, token, body }) => {
     const summary = await readStreamSummary(reader);
     await reader.cancel();
     return summary;
+  } catch (error) {
+    // 超时边界
+    if (isTimeoutError(error)) {
+      throw new Error(REQUEST_TIMEOUT_MESSAGE);
+    }
+    throw error;
   } finally {
     window.clearTimeout(timer);
   }
@@ -212,6 +227,10 @@ const runSubProbe = async (name, task) => {
     const summary = await task();
     return { name, status: 'success', summary };
   } catch (error) {
+    // 超时边界
+    if (isTimeoutError(error)) {
+      throw error;
+    }
     return { name, status: 'failed', summary: error?.message || '检测失败' };
   }
 };
@@ -265,7 +284,7 @@ const runProbe = async ({ baseUrl, token, model, checkType }) => {
     return { duration, ...result };
   } catch (error) {
     const duration = Math.round(performance.now() - startedAt);
-    return { status: 'failed', duration, summary: error?.message || '检测失败' };
+    return { status: 'failed', duration, summary: error?.message || '检测失败', isTimedOut: isTimeoutError(error) };
   }
 };
 // 请求探针结果
@@ -294,10 +313,19 @@ const requestProbeResult = ({ baseUrl, token, model, checkType }) => {
 const createProbeJobs = ({ selectedModels, selectedChecks }) =>
   selectedModels.flatMap((model) => selectedChecks.map((checkType) => ({ model, checkType })));
 // 执行全部探针
-export const runProbeJobs = async ({ baseUrl, token, stationName, remark, selectedModels, selectedChecks, onResult }) => {
+export const runProbeJobs = async ({ baseUrl, token, stationName, remark, selectedModels, selectedChecks, shouldStop, onResult }) => {
   const jobs = createProbeJobs({ selectedModels, selectedChecks });
+  let finishedCount = 0;
   for (const job of jobs) {
+    // 重置停止边界
+    if (shouldStop?.()) {
+      return finishedCount;
+    }
     const result = await runProbe({ baseUrl, token, model: job.model, checkType: job.checkType });
+    // 重置停止边界
+    if (shouldStop?.()) {
+      return finishedCount;
+    }
     onResult({
       id: `${Date.now()}-${job.model}-${job.checkType}`,
       stationName,
@@ -308,6 +336,11 @@ export const runProbeJobs = async ({ baseUrl, token, stationName, remark, select
       checkType: job.checkType,
       ...result,
     });
+    finishedCount += 1;
+    // 超时停止边界
+    if (result.isTimedOut) {
+      return finishedCount;
+    }
   }
-  return jobs.length;
+  return finishedCount;
 };

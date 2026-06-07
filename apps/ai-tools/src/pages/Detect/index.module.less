@@ -20,6 +20,13 @@
   }
 }
 
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
 .pageTitle {
   margin: 0 !important;
   color: #0f172a !important;
@@ -39,15 +46,27 @@
 }
 
 .fieldBlock {
-  display: flex;
-  // gap: 4px;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
 
   .label {
-    width: 80px;
-    display: flex;
-    align-items: center;
-    display: inline-block;
+    color: #334155;
+    text-align: right;
+    white-space: nowrap;
   }
+}
+
+.historyToolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.hiddenFile {
+  display: none;
 }
 
 .fetchBar {
@@ -144,7 +163,7 @@
 
 .probeActions {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   gap: 10px;
   align-items: center;
 }

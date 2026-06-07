@@ -1,4 +1,5 @@
-import { Button, Card, Checkbox, Col, Empty, Input, Row, Space, Table, Tag, Typography, message } from 'antd';
+import { useRef } from 'react';
+import { Button, Card, Checkbox, Col, Empty, Input, Modal, Popconfirm, Row, Space, Table, Tag, Typography, message } from 'antd';
 import { useMemoizedFn, useReactive, useRequest } from 'ahooks';
 import {
   DEFAULT_CHECKS,
@@ -6,11 +7,13 @@ import {
   checkOptions,
   fetchModelOptions,
   maskToken,
+  normalizeBaseUrl,
   runProbeJobs,
   statusMap,
 } from './probeUtils';
 import styles from './index.module.less';
 
+const HISTORY_STORAGE_KEY = 'ai-tools-detect-history';
 const RESULT_FILTERS = ['all', 'success', 'failed'];
 const MODEL_CATEGORIES = [
   { label: '全部', value: 'all' },
@@ -22,6 +25,93 @@ const MODEL_CATEGORIES = [
   { label: '其他', value: 'other' },
 ];
 const clickableTextStyle = { cursor: 'pointer' };
+
+// 下载 JSON 文件
+const downloadJsonFile = (name, content) => {
+  const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+};
+
+// 创建历史 ID
+const createHistoryId = (baseUrl, token) => `${normalizeBaseUrl(baseUrl)}-${token.trim()}`;
+
+// 读取历史列表
+const readHistoryList = () => {
+  try {
+    const text = window.localStorage.getItem(HISTORY_STORAGE_KEY);
+    const list = JSON.parse(text || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+// 写入历史列表
+const writeHistoryList = (list) => {
+  window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(list));
+};
+
+// 创建历史记录
+const buildHistoryRecord = (state) => {
+  const nowText = new Date().toLocaleString();
+  const baseUrl = normalizeBaseUrl(state.baseUrl);
+  const token = state.token.trim();
+
+  return {
+    id: createHistoryId(baseUrl, token),
+    stationName: state.stationName.trim() || '未命名',
+    remark: state.remark.trim(),
+    baseUrl,
+    token,
+    updatedAt: nowText,
+  };
+};
+
+// 规范历史记录
+const normalizeHistoryRecord = (record) => {
+  const baseUrl = normalizeBaseUrl(String(record?.baseUrl || ''));
+  const token = String(record?.token || '').trim();
+
+  return {
+    id: createHistoryId(baseUrl, token),
+    stationName: String(record?.stationName || '未命名'),
+    remark: String(record?.remark || ''),
+    baseUrl,
+    token,
+    updatedAt: String(record?.updatedAt || new Date().toLocaleString()),
+  };
+};
+
+// 校验历史记录
+const isValidHistoryRecord = (record) => Boolean(record?.baseUrl && record?.token);
+
+// 更新历史列表
+const upsertHistoryRecord = (list, record) => {
+  const nextList = list.filter((item) => item.id !== record.id);
+  return [record, ...nextList];
+};
+
+// 合并历史列表
+const mergeHistoryList = (currentList, importList) =>
+  importList.reduce((list, record) => upsertHistoryRecord(list, record), currentList);
+
+// 筛选历史列表
+const filterHistoryList = (list, keyword) => {
+  const query = keyword.trim().toLowerCase();
+  // 空搜索边界
+  if (!query) {
+    return list;
+  }
+  return list.filter((item) => {
+    const text = [item.stationName, item.remark, item.baseUrl, item.token].join(' ').toLowerCase();
+    return text.includes(query);
+  });
+};
 
 // 复制文本
 const copyText = async (text) => {
@@ -213,6 +303,154 @@ const ModelPicker = ({ state, onFieldChange }) => {
   );
 };
 
+// 页面标题栏
+const PageHeader = ({ onOpenHistory }) => (
+  <div className={styles.pageHeader}>
+    <Typography.Title level={5} className={styles.pageTitle}>
+      AI 中转站检测台
+    </Typography.Title>
+    <Button onClick={onOpenHistory}>历史记录</Button>
+  </div>
+);
+
+// 历史弹窗
+const HistoryDeleteButton = ({ record, onDelete }) => {
+  // 删除历史
+  const handleDelete = useMemoizedFn(() => onDelete(record.id));
+
+  return (
+    <Popconfirm title="确认删除该历史记录？" onConfirm={handleDelete}>
+      <Button danger size="small">
+        删除
+      </Button>
+    </Popconfirm>
+  );
+};
+
+// 历史弹窗
+const HistoryModal = ({ state, onKeywordChange, onImport, onExport, onSelect, onSave, onDelete, onCancel, onOk }) => {
+  const fileRef = useRef(null);
+  const visibleList = filterHistoryList(state.historyList, state.historyKeyword);
+
+  // 搜索历史
+  const handleKeywordChange = useMemoizedFn((event) => onKeywordChange(event.target.value));
+
+
+
+  // 触发导入
+  const handleImportClick = useMemoizedFn(() => fileRef.current?.click());
+
+  // 导入历史
+  const handleImportChange = useMemoizedFn((event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    // 文件边界
+    if (!file) {
+      return;
+    }
+    onImport(file);
+  });
+
+  // 导出历史
+  const handleExport = useMemoizedFn(() => onExport());
+
+  // 确认选择
+  const handleOk = useMemoizedFn(() => onOk());
+
+  // 关闭弹窗
+  const handleCancel = useMemoizedFn(() => onCancel());
+
+  // 渲染历史名称
+  const renderName = useMemoizedFn((text) => <Typography.Text ellipsis>{text || '-'}</Typography.Text>);
+
+  // 渲染历史 URL
+  const renderUrl = useMemoizedFn((text) => <CopyText text={text} width={240} />);
+
+  // 渲染历史令牌
+  const renderToken = useMemoizedFn((text) => <CopyText text={text} masked width={130} />);
+
+  // 渲染历史操作
+  const renderAction = useMemoizedFn((_, record) => <HistoryDeleteButton record={record} onDelete={onDelete} />);
+
+  const columns = [
+    {
+      title: '名称',
+      dataIndex: 'stationName',
+      width: 130,
+      render: renderName,
+    },
+    {
+      title: 'URL',
+      dataIndex: 'baseUrl',
+      width: 150,
+      render: renderUrl,
+    },
+    {
+      title: 'Token',
+      dataIndex: 'token',
+      width: 150,
+      render: renderToken,
+    },
+    {
+      title: '备注',
+      dataIndex: 'remark',
+      render: renderToken,
+    },
+    {
+      title: '更新时间',
+      dataIndex: 'updatedAt',
+      width: 170,
+    },
+    {
+      title: '操作',
+      dataIndex: 'id',
+      width: 90,
+      render: renderAction,
+    },
+  ];
+  const selectedHistoryIds = state.selectedHistoryId ? [state.selectedHistoryId] : [];
+  const rowSelection = {
+    type: 'radio',
+    selectedRowKeys: selectedHistoryIds,
+    onChange: onSelect,
+  };
+
+  return (
+    <Modal
+      title="历史记录"
+      open={state.historyOpen}
+      width={'65%'}
+      okText="确定"
+      cancelText="取消"
+      onOk={handleOk}
+      onCancel={handleCancel}
+    >
+      <Space direction="vertical" size={12} className={styles.fullWidth}>
+        <div className={styles.historyToolbar}>
+          <Input.Search allowClear placeholder="搜索名称、备注、URL 或 Token" value={state.historyKeyword} onChange={handleKeywordChange} />
+          <Space wrap>
+            <Button onClick={handleImportClick}>导入 JSON</Button>
+            <Button onClick={handleExport}>导出 JSON</Button>
+          </Space>
+          <input ref={fileRef} type="file" accept="application/json,.json" className={styles.hiddenFile} onChange={handleImportChange} />
+        </div>
+        <Table
+          rowKey="id"
+          size="small"
+          columns={columns}
+          dataSource={visibleList}
+          rowSelection={rowSelection}
+          pagination={{ pageSize: 6 }}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无历史" /> }}
+          scroll={{
+            y: '480px'
+          }}
+        />
+      </Space>
+    </Modal>
+  );
+};
+
 // 配置面板
 const ConfigPanel = ({ state, loading, onFieldChange, onFetchModels }) => {
   const handleNameChange = useMemoizedFn((event) => onFieldChange('stationName', event.target.value));
@@ -222,15 +460,15 @@ const ConfigPanel = ({ state, loading, onFieldChange, onFetchModels }) => {
 
   return (
     <Card bordered={false} className={styles.panelCard}>
-      <Space orientation="vertical" size={10} className={styles.fullWidth}>
+      <Space direction="vertical" size={10} className={styles.fullWidth}>
         <Row gutter={[10, 10]}>
-          <Col md={12}>
+          <Col md={6}>
             <div className={styles.fieldBlock}>
               <Typography.Text strong className={styles.label}>名称</Typography.Text>
               <Input size="large" value={state.stationName} onChange={handleNameChange} />
             </div>
           </Col>
-          <Col md={12}>
+          <Col md={18}>
             <div className={styles.fieldBlock}>
               <Typography.Text strong className={styles.label}>备注</Typography.Text>
               <Input size="large" value={state.remark} onChange={handleRemarkChange} />
@@ -243,19 +481,25 @@ const ConfigPanel = ({ state, loading, onFieldChange, onFetchModels }) => {
         </div>
         <div className={styles.fieldBlock}>
           <Typography.Text strong className={styles.label}>Token</Typography.Text>
-          <Input.Password size="large" value={state.token} onChange={handleTokenChange} />
+          <Input size="large" value={state.token} onChange={handleTokenChange} />
         </div>
         <div className={styles.fetchBar}>
-          <Button type="primary" loading={loading} onClick={onFetchModels} size=''>
+          <Button type="primary" loading={loading} onClick={onFetchModels}>
             拉取模型
           </Button>
           <Typography.Text type="secondary">{state.modelOptions.length} 个模型</Typography.Text>
         </div>
-        <ModelPicker state={state} onFieldChange={onFieldChange} />
       </Space>
     </Card>
   );
 };
+
+// 模型面板
+const ModelPanel = ({ state, onFieldChange }) => (
+  <Card bordered={false} title="模型选择" className={styles.panelCard}>
+    <ModelPicker state={state} onFieldChange={onFieldChange} />
+  </Card>
+);
 
 // 检测统计项
 const ProbeStatCard = ({ label, value }) => (
@@ -268,7 +512,7 @@ const ProbeStatCard = ({ label, value }) => (
 );
 
 // 检测面板
-const ProbePanel = ({ state, loading, onCheckChange, onRunDetect, onClearResults }) => (
+const ProbePanel = ({ state, loading, onCheckChange, onRunDetect, onClearResults, onReset }) => (
   <Card bordered={false} title="探针检测" className={`${styles.panelCard} ${styles.probeCard}`}>
     <Space direction="vertical" size={12} className={styles.fullWidth}>
       <Checkbox.Group className={styles.checkGroup} value={state.selectedChecks} options={checkOptions} onChange={onCheckChange} />
@@ -277,6 +521,7 @@ const ProbePanel = ({ state, loading, onCheckChange, onRunDetect, onClearResults
           开始检测
         </Button>
         <Button onClick={onClearResults}>清空结果</Button>
+        <Button danger onClick={onReset}>重置</Button>
       </div>
     </Space>
   </Card>
@@ -427,10 +672,20 @@ const Detect = () => {
     selectedChecks: DEFAULT_CHECKS,
     resultStatus: 'all',
     results: [],
+    historyOpen: false,
+    historyKeyword: '',
+    historyList: readHistoryList(),
+    selectedHistoryId: '',
+    requestId: 0,
   });
   const { loading: modelLoading, run: runFetchModels } = useRequest(fetchModelOptions, {
     manual: true,
-    onSuccess: (options) => {
+    onSuccess: (options, params) => {
+      const requestId = params?.[0]?.requestId;
+      // 过期请求边界
+      if (requestId !== state.requestId) {
+        return;
+      }
       state.modelOptions = options;
       state.modelCategory = 'all';
       state.selectedModels = options.map((option) => option.value);
@@ -442,8 +697,16 @@ const Detect = () => {
   });
   const { loading: detectLoading, run: runDetect } = useRequest(runProbeJobs, {
     manual: true,
-    onSuccess: (count) => {
+    onSuccess: (count, params) => {
+      const requestId = params?.[0]?.requestId;
+      // 过期请求边界
+      if (requestId !== state.requestId) {
+        return;
+      }
       message.success(`完成 ${count}`);
+    },
+    onError: (error) => {
+      message.error(error?.message || '检测失败');
     },
   });
 
@@ -467,8 +730,122 @@ const Detect = () => {
   });
 
   // 写入检测结果
-  const handleResultAppend = useMemoizedFn((result) => {
+  const handleResultAppend = useMemoizedFn((requestId, result) => {
+    // 过期结果边界
+    if (requestId !== state.requestId) {
+      return;
+    }
     state.results = [result, ...state.results];
+  });
+
+  // 保存历史记录
+  const handleSaveHistory = useMemoizedFn(() => {
+    // URL 边界
+    if (!state.baseUrl.trim()) {
+      message.warning('Base URL');
+      return false;
+    }
+    // Token 边界
+    if (!state.token.trim()) {
+      message.warning('Token');
+      return false;
+    }
+    const record = buildHistoryRecord(state);
+    const list = upsertHistoryRecord(state.historyList, record);
+    state.historyList = list;
+    state.selectedHistoryId = record.id;
+    writeHistoryList(list);
+    message.success('已保存历史');
+    return true;
+  });
+
+  // 打开历史弹窗
+  const handleOpenHistory = useMemoizedFn(() => {
+    state.historyList = readHistoryList();
+    state.historyOpen = true;
+  });
+
+  // 关闭历史弹窗
+  const handleCloseHistory = useMemoizedFn(() => {
+    state.historyOpen = false;
+  });
+
+  // 更新历史搜索
+  const handleHistoryKeywordChange = useMemoizedFn((keyword) => {
+    state.historyKeyword = keyword;
+  });
+
+  // 选择历史记录
+  const handleHistorySelect = useMemoizedFn((selectedIds) => {
+    state.selectedHistoryId = selectedIds[0] || '';
+  });
+
+  // 导出历史记录
+  const handleExportHistory = useMemoizedFn(() => {
+    // 空历史边界
+    if (state.historyList.length === 0) {
+      message.warning('暂无历史可导出');
+      return;
+    }
+    const content = JSON.stringify(state.historyList, null, 2);
+    downloadJsonFile('ai-tools-detect-history.json', content);
+    message.success('已导出历史');
+  });
+
+  // 导入历史记录
+  const handleImportHistory = useMemoizedFn(async (file) => {
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      const sourceList = Array.isArray(payload) ? payload : payload?.historyList;
+      // 格式边界
+      if (!Array.isArray(sourceList)) {
+        message.error('JSON 格式错误');
+        return;
+      }
+      const importList = sourceList.filter(isValidHistoryRecord).map(normalizeHistoryRecord);
+      // 空数据边界
+      if (importList.length === 0) {
+        message.warning('没有可导入的历史');
+        return;
+      }
+      const list = mergeHistoryList(state.historyList, importList);
+      state.historyList = list;
+      writeHistoryList(list);
+      message.success(`已导入 ${importList.length} 条历史`);
+    } catch (error) {
+      message.error('JSON 读取失败');
+    }
+  });
+
+  // 删除历史记录
+  const handleDeleteHistory = useMemoizedFn((id) => {
+    const list = state.historyList.filter((item) => item.id !== id);
+    state.historyList = list;
+    writeHistoryList(list);
+    // 选中边界
+    if (state.selectedHistoryId === id) {
+      state.selectedHistoryId = '';
+    }
+    message.success('已删除历史');
+  });
+
+  // 应用历史记录
+  const handleApplyHistory = useMemoizedFn(() => {
+    const record = state.historyList.find((item) => item.id === state.selectedHistoryId);
+    // 未选择边界
+    if (!record) {
+      message.warning('请选择历史记录');
+      return;
+    }
+    state.stationName = record.stationName || '';
+    state.remark = record.remark || '';
+    state.baseUrl = record.baseUrl || '';
+    state.token = record.token || '';
+    state.modelOptions = [];
+    state.selectedModels = [];
+    state.modelCategory = 'all';
+    state.historyOpen = false;
   });
 
   // 拉取模型前校验
@@ -483,7 +860,13 @@ const Detect = () => {
       message.warning('Token');
       return;
     }
-    runFetchModels({ baseUrl: state.baseUrl, token: state.token });
+    const hasSaved = handleSaveHistory();
+    // 保存边界
+    if (!hasSaved) {
+      return;
+    }
+    state.requestId += 1;
+    runFetchModels({ baseUrl: state.baseUrl, token: state.token, requestId: state.requestId });
   });
 
   // 开始检测前校验
@@ -498,6 +881,13 @@ const Detect = () => {
       message.warning('探针');
       return;
     }
+    const hasSaved = handleSaveHistory();
+    // 保存边界
+    if (!hasSaved) {
+      return;
+    }
+    state.requestId += 1;
+    const requestId = state.requestId;
     runDetect({
       baseUrl: state.baseUrl,
       token: state.token,
@@ -505,7 +895,9 @@ const Detect = () => {
       remark: state.remark,
       selectedModels: state.selectedModels,
       selectedChecks: state.selectedChecks,
-      onResult: handleResultAppend,
+      requestId,
+      shouldStop: () => requestId !== state.requestId,
+      onResult: (result) => handleResultAppend(requestId, result),
     });
   });
 
@@ -514,11 +906,26 @@ const Detect = () => {
     state.results = [];
   });
 
+  // 重置检测状态
+  const handleReset = useMemoizedFn(() => {
+    state.requestId += 1;
+    state.stationName = '';
+    state.remark = '';
+    state.baseUrl = '';
+    state.token = '';
+    state.modelOptions = [];
+    state.modelCategory = 'all';
+    state.selectedModels = [];
+    state.selectedChecks = DEFAULT_CHECKS;
+    state.resultStatus = 'all';
+    state.results = [];
+    state.selectedHistoryId = '';
+    message.success('已重置');
+  });
+
   return (
     <Space direction="vertical" size={10} className={`page-stack ${styles.detectPage}`}>
-      <Typography.Title level={5} className={styles.pageTitle}>
-        AI 中转站检测台
-      </Typography.Title>
+      <PageHeader onOpenHistory={handleOpenHistory} />
       <Row gutter={[12, 12]}>
         <Col xl={18}>
           <ConfigPanel state={state} loading={modelLoading} onFieldChange={handleFieldChange} onFetchModels={handleFetchModels} />
@@ -530,10 +937,23 @@ const Detect = () => {
             onCheckChange={handleCheckChange}
             onRunDetect={handleRunDetect}
             onClearResults={handleClearResults}
+            onReset={handleReset}
           />
         </Col>
       </Row>
+      <ModelPanel state={state} onFieldChange={handleFieldChange} />
       <ResultTable results={state.results} status={state.resultStatus} onStatusChange={handleResultStatusChange} />
+      <HistoryModal
+        state={state}
+        onKeywordChange={handleHistoryKeywordChange}
+        onImport={handleImportHistory}
+        onExport={handleExportHistory}
+        onSelect={handleHistorySelect}
+        onSave={handleSaveHistory}
+        onDelete={handleDeleteHistory}
+        onCancel={handleCloseHistory}
+        onOk={handleApplyHistory}
+      />
     </Space>
   );
 };
