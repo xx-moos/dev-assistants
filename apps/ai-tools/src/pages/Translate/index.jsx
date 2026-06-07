@@ -8,6 +8,7 @@ const { TextArea } = Input;
 
 const GOOGLE_TRANSLATE_API_KEY = import.meta.env.VITE_GOOGLE_TRANSLATE_API_KEY;
 const DEFAULT_LANGUAGE_LIST = ['JS', 'Java'];
+const SELECTED_LANGUAGE_STORAGE_KEY = 'translate:selectedLanguages';
 const COMMON_NOUN_LIST = [
   '用户',
   '商家',
@@ -148,6 +149,50 @@ const createLanguageOption = (group) => ({
 });
 
 const languageOptionList = namingGroupList.map(createLanguageOption);
+
+// 过滤语言列表
+const filterValidLanguageList = (languageList) => {
+  // 格式边界
+  if (!Array.isArray(languageList)) {
+    return DEFAULT_LANGUAGE_LIST;
+  }
+
+  const validLanguageSet = new Set(languageOptionList.map((option) => option.value));
+  return languageList.filter((language) => typeof language === 'string' && validLanguageSet.has(language));
+};
+
+// 读取语言选择
+const getStoredLanguageList = () => {
+  // 浏览器边界
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return DEFAULT_LANGUAGE_LIST;
+  }
+
+  try {
+    const storedLanguageText = window.localStorage.getItem(SELECTED_LANGUAGE_STORAGE_KEY);
+
+    // 未保存边界
+    if (!storedLanguageText) {
+      return DEFAULT_LANGUAGE_LIST;
+    }
+
+    return filterValidLanguageList(JSON.parse(storedLanguageText));
+  } catch (error) {
+    window.localStorage.removeItem(SELECTED_LANGUAGE_STORAGE_KEY);
+
+    return DEFAULT_LANGUAGE_LIST;
+  }
+};
+
+// 保存语言选择
+const saveStoredLanguageList = (selectedLanguages) => {
+  // 浏览器边界
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return;
+  }
+
+  window.localStorage.setItem(SELECTED_LANGUAGE_STORAGE_KEY, JSON.stringify(selectedLanguages));
+};
 
 // 拆为单词
 const getSingleWordTranslations = (translations) => getUniqueTranslations(translations.flatMap(splitWords));
@@ -475,7 +520,7 @@ const Translate = () => {
   const { message } = App.useApp();
   const state = useReactive({
     sourceText: '',
-    selectedLanguages: DEFAULT_LANGUAGE_LIST,
+    selectedLanguages: getStoredLanguageList(),
     selectedWords: [],
     selectedTranslation: '',
     translations: [],
@@ -554,7 +599,10 @@ const Translate = () => {
 
   // 切换语言分组
   const handleLanguageChange = useMemoizedFn((selectedLanguages) => {
-    state.selectedLanguages = selectedLanguages;
+    const validLanguageList = filterValidLanguageList(selectedLanguages);
+
+    state.selectedLanguages = validLanguageList;
+    saveStoredLanguageList(validLanguageList);
   });
 
   // 复制命名文本
