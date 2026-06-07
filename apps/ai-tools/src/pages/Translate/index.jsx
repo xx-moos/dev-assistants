@@ -1,157 +1,12 @@
 import { App, Empty, Input, Space } from 'antd';
 import { useMemoizedFn, useReactive, useRequest } from 'ahooks';
 
+import { createNamingGroupList } from './namingGroupList';
 import styles from './index.module.less';
 
 const { TextArea } = Input;
 
 const GOOGLE_TRANSLATE_API_KEY = import.meta.env.VITE_GOOGLE_TRANSLATE_API_KEY;
-
-const namingGroupList = [
-  {
-    title: 'JS',
-    items: [
-      { label: '变量/函数', getValue: (name) => toCamelCase(name) },
-      { label: 'is 布尔', getValue: (name) => `is${toPascalCase(name)}` },
-      { label: 'has 布尔', getValue: (name) => `has${toPascalCase(name)}` },
-      { label: 'can 布尔', getValue: (name) => `can${toPascalCase(name)}` },
-      { label: 'should 布尔', getValue: (name) => `should${toPascalCase(name)}` },
-      { label: '事件处理', getValue: (name) => `handle${toPascalCase(name)}` },
-      { label: '回调属性', getValue: (name) => `on${toPascalCase(name)}` },
-      { label: '获取', getValue: (name) => `get${toPascalCase(name)}` },
-      { label: '请求', getValue: (name) => `fetch${toPascalCase(name)}` },
-      { label: '创建', getValue: (name) => `create${toPascalCase(name)}` },
-      { label: '更新', getValue: (name) => `update${toPascalCase(name)}` },
-      { label: '删除', getValue: (name) => `delete${toPascalCase(name)}` },
-      { label: '保存', getValue: (name) => `save${toPascalCase(name)}` },
-      { label: '校验', getValue: (name) => `validate${toPascalCase(name)}` },
-      { label: '解析', getValue: (name) => `parse${toPascalCase(name)}` },
-      { label: '格式化', getValue: (name) => `format${toPascalCase(name)}` },
-      { label: '常量', getValue: (name) => toConstantCase(name) },
-      { label: '组件', getValue: (name) => toPascalCase(name) },
-      { label: 'Hook', getValue: (name) => `use${toPascalCase(name)}` },
-      { label: 'Store', getValue: (name) => `use${toPascalCase(name)}Store` },
-      { label: 'Context', getValue: (name) => `${toPascalCase(name)}Context` },
-      { label: 'Provider', getValue: (name) => `${toPascalCase(name)}Provider` },
-      { label: '类型', getValue: (name) => toPascalCase(name) },
-      { label: 'Props', getValue: (name) => `${toPascalCase(name)}Props` },
-      { label: '路由', getValue: (name) => `/${toKebabCase(name)}` },
-      { label: '文件', getValue: (name) => `${toKebabCase(name)}.js` },
-      { label: '服务文件', getValue: (name) => `${toKebabCase(name)}.service.js` },
-      { label: '测试文件', getValue: (name) => `${toKebabCase(name)}.test.js` },
-      { label: '组件目录', getValue: (name) => `${toPascalCase(name)}/index.jsx` },
-    ],
-  },
-  {
-    title: 'Java',
-    items: [
-      { label: '类名', getValue: (name) => toPascalCase(name) },
-      { label: '接口', getValue: (name) => toPascalCase(name) },
-      { label: '方法/字段', getValue: (name) => toCamelCase(name) },
-      { label: '布尔字段', getValue: (name) => `is${toPascalCase(name)}` },
-      { label: '常量', getValue: (name) => toConstantCase(name) },
-      { label: '包名', getValue: (name) => toPackageCase(name) },
-      { label: 'Controller', getValue: (name) => `${toPascalCase(name)}Controller` },
-      { label: 'Service', getValue: (name) => `${toPascalCase(name)}Service` },
-      { label: 'ServiceImpl', getValue: (name) => `${toPascalCase(name)}ServiceImpl` },
-      { label: 'Repository', getValue: (name) => `${toPascalCase(name)}Repository` },
-      { label: 'Mapper', getValue: (name) => `${toPascalCase(name)}Mapper` },
-      { label: 'DTO', getValue: (name) => `${toPascalCase(name)}DTO` },
-      { label: 'VO', getValue: (name) => `${toPascalCase(name)}VO` },
-      { label: 'BO', getValue: (name) => `${toPascalCase(name)}BO` },
-      { label: 'Entity', getValue: (name) => `${toPascalCase(name)}Entity` },
-      { label: 'Enum', getValue: (name) => `${toPascalCase(name)}Enum` },
-      { label: 'Exception', getValue: (name) => `${toPascalCase(name)}Exception` },
-      { label: 'Config', getValue: (name) => `${toPascalCase(name)}Config` },
-      { label: 'Properties', getValue: (name) => `${toPascalCase(name)}Properties` },
-      { label: 'Request', getValue: (name) => `${toPascalCase(name)}Request` },
-      { label: 'Response', getValue: (name) => `${toPascalCase(name)}Response` },
-      { label: '测试类', getValue: (name) => `${toPascalCase(name)}Test` },
-      { label: '集成测试', getValue: (name) => `${toPascalCase(name)}IT` },
-      { label: '文件名', getValue: (name) => `${toPascalCase(name)}.java` },
-    ],
-  },
-  {
-    title: 'Python',
-    items: [
-      { label: '变量/函数', getValue: (name) => toSnakeCase(name) },
-      { label: '异步函数', getValue: (name) => `async_${toSnakeCase(name)}` },
-      { label: '类名', getValue: (name) => toPascalCase(name) },
-      { label: '常量', getValue: (name) => toConstantCase(name) },
-      { label: '私有成员', getValue: (name) => `_${toSnakeCase(name)}` },
-      { label: '魔术方法', getValue: (name) => `__${toSnakeCase(name)}__` },
-      { label: '模块文件', getValue: (name) => `${toSnakeCase(name)}.py` },
-      { label: '包目录', getValue: (name) => toSnakeCase(name) },
-      { label: '测试文件', getValue: (name) => `test_${toSnakeCase(name)}.py` },
-      { label: 'pytest', getValue: (name) => `test_${toSnakeCase(name)}` },
-      { label: 'fixture', getValue: (name) => `${toSnakeCase(name)}_fixture` },
-      { label: 'Pydantic', getValue: (name) => `${toPascalCase(name)}Model` },
-      { label: 'Schema', getValue: (name) => `${toPascalCase(name)}Schema` },
-      { label: 'SQLAlchemy', getValue: (name) => `${toPascalCase(name)}Table` },
-      { label: 'Repository', getValue: (name) => `${toSnakeCase(name)}_repository` },
-      { label: 'Service', getValue: (name) => `${toSnakeCase(name)}_service` },
-      { label: '异常类', getValue: (name) => `${toPascalCase(name)}Error` },
-      { label: 'Celery', getValue: (name) => `${toSnakeCase(name)}_task` },
-      { label: '管理命令', getValue: (name) => toSnakeCase(name) },
-      { label: 'FastAPI', getValue: (name) => `/${toKebabCase(name)}` },
-    ],
-  },
-  {
-    title: 'PHP',
-    items: [
-      { label: '变量', getValue: (name) => `$${toCamelCase(name)}` },
-      { label: '方法', getValue: (name) => toCamelCase(name) },
-      { label: '类名', getValue: (name) => toPascalCase(name) },
-      { label: '接口', getValue: (name) => `${toPascalCase(name)}Interface` },
-      { label: 'Trait', getValue: (name) => `${toPascalCase(name)}Trait` },
-      { label: '命名空间', getValue: (name) => toPascalCase(name) },
-      { label: '常量', getValue: (name) => toConstantCase(name) },
-      { label: 'Controller', getValue: (name) => `${toPascalCase(name)}Controller` },
-      { label: 'Service', getValue: (name) => `${toPascalCase(name)}Service` },
-      { label: 'Repository', getValue: (name) => `${toPascalCase(name)}Repository` },
-      { label: 'Model', getValue: (name) => `${toPascalCase(name)}Model` },
-      { label: 'Request', getValue: (name) => `${toPascalCase(name)}Request` },
-      { label: 'Resource', getValue: (name) => `${toPascalCase(name)}Resource` },
-      { label: 'Middleware', getValue: (name) => `${toPascalCase(name)}Middleware` },
-      { label: 'Policy', getValue: (name) => `${toPascalCase(name)}Policy` },
-      { label: 'Job', getValue: (name) => `${toPascalCase(name)}Job` },
-      { label: 'Event', getValue: (name) => `${toPascalCase(name)}Event` },
-      { label: 'Listener', getValue: (name) => `${toPascalCase(name)}Listener` },
-      { label: 'Migration', getValue: (name) => `create_${toPluralSnakeCase(name)}_table` },
-      { label: 'Seeder', getValue: (name) => `${toPascalCase(name)}Seeder` },
-      { label: 'Factory', getValue: (name) => `${toPascalCase(name)}Factory` },
-      { label: 'Exception', getValue: (name) => `${toPascalCase(name)}Exception` },
-      { label: '测试类', getValue: (name) => `${toPascalCase(name)}Test` },
-      { label: '文件名', getValue: (name) => `${toPascalCase(name)}.php` },
-    ],
-  },
-  {
-    title: 'SQL',
-    items: [
-      { label: '表名', getValue: (name) => toPluralSnakeCase(name) },
-      { label: '字段名', getValue: (name) => toSnakeCase(name) },
-      { label: '主键', getValue: (name) => `${toSnakeCase(name)}_id` },
-      { label: '外键', getValue: (name) => `${toSnakeCase(name)}_id` },
-      { label: '布尔字段', getValue: (name) => `is_${toSnakeCase(name)}` },
-      { label: '时间字段', getValue: (name) => `${toSnakeCase(name)}_at` },
-      { label: '普通索引', getValue: (name) => `idx_${toSnakeCase(name)}` },
-      { label: '唯一索引', getValue: (name) => `uk_${toSnakeCase(name)}` },
-      { label: '外键约束', getValue: (name) => `fk_${toSnakeCase(name)}_id` },
-      { label: '检查约束', getValue: (name) => `ck_${toSnakeCase(name)}` },
-      { label: '默认约束', getValue: (name) => `df_${toSnakeCase(name)}` },
-      { label: '查询别名', getValue: (name) => toSnakeCase(name) },
-      { label: '迁移', getValue: (name) => `create_${toPluralSnakeCase(name)}_table` },
-      { label: '视图', getValue: (name) => `v_${toSnakeCase(name)}` },
-      { label: '物化视图', getValue: (name) => `mv_${toSnakeCase(name)}` },
-      { label: '存储过程', getValue: (name) => `sp_${toSnakeCase(name)}` },
-      { label: '函数', getValue: (name) => `fn_${toSnakeCase(name)}` },
-      { label: '触发器', getValue: (name) => `trg_${toSnakeCase(name)}` },
-      { label: '序列', getValue: (name) => `seq_${toSnakeCase(name)}` },
-      { label: '临时表', getValue: (name) => `tmp_${toSnakeCase(name)}` },
-      { label: '备份表', getValue: (name) => `${toSnakeCase(name)}_bak` },
-    ],
-  },
-];
 
 // 拆分英文单词
 const splitWords = (text) =>
@@ -200,6 +55,12 @@ const toConstantCase = (text) => toSnakeCase(text).toUpperCase();
 // 转包名
 const toPackageCase = (text) => splitWords(text).map((word) => word.toLowerCase()).join('.');
 
+// 转点分名
+const toDotCase = (text) => splitWords(text).map((word) => word.toLowerCase()).join('.');
+
+// 转请求头名
+const toHeaderCase = (text) => splitWords(text).map(capitalizeWord).join('-');
+
 // 简单复数化
 const pluralizeWord = (word) => {
   // y 结尾边界
@@ -232,6 +93,20 @@ const toPluralKebabCase = (text) => {
 
 // 转复数下划线
 const toPluralSnakeCase = (text) => toPluralKebabCase(text).replace(/-/g, '_');
+
+
+const namingGroupList = createNamingGroupList({
+  toCamelCase,
+  toConstantCase,
+  toDotCase,
+  toHeaderCase,
+  toKebabCase,
+  toPackageCase,
+  toPascalCase,
+  toPluralKebabCase,
+  toPluralSnakeCase,
+  toSnakeCase,
+});
 
 // 拆为单词
 const getSingleWordTranslations = (translations) => getUniqueTranslations(translations.flatMap(splitWords));
@@ -400,7 +275,6 @@ const TranslateSelector = ({ sourceText, selectedWords, words, onSourceChange, o
         onChange={onSourceChange}
         onPressEnter={onSourcePressEnter}
         allowClear
-        borderless
       />
     </section>
     <section className={styles.wordPanel}>
@@ -535,7 +409,8 @@ const Translate = () => {
   const selectedText = state.selectedWords.join(' ');
 
   return (
-    <Space direction="vertical" size={8} className={styles.page}>
+    <Space orientation="vertical" size={8} className={styles.page}>
+      <div style={{ fontSize: 24 }}>翻译</div>
       <TranslateSelector
         sourceText={state.sourceText}
         selectedWords={state.selectedWords}
