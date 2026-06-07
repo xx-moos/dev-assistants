@@ -1,8 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppLayout from '../components/AppLayout';
-import Dashboard from '../pages/Dashboard';
-import Tools from '../pages/Tools';
-import Settings from '../pages/Settings';
+import Detect from '../pages/Detect';
+import Translate from '../pages/Translate';
 
 // 创建应用路由
 export const router = createBrowserRouter([
@@ -12,19 +11,15 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="/dashboard" replace />,
+        element: <Navigate to="/translate" replace />,
       },
       {
-        path: 'dashboard',
-        element: <Dashboard />,
+        path: 'translate',
+        element: <Translate />,
       },
       {
-        path: 'tools',
-        element: <Tools />,
-      },
-      {
-        path: 'settings',
-        element: <Settings />,
+        path: 'detect',
+        element: <Detect />,
       },
     ],
   },
