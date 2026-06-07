@@ -15,7 +15,7 @@ const menuItems = [
   {
     key: '/detect',
     icon: <CheckCircleOutlined />,
-    label: '检测占位',
+    label: '中转站检测',
   },
 ];
 
