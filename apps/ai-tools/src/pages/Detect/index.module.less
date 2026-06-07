@@ -1,7 +1,7 @@
 .detectPage {
   :global(.ant-card) {
     border: 1px solid rgba(148, 163, 184, 0.16);
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    // box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
   }
 
   :global(.ant-card-head) {
@@ -40,8 +40,14 @@
 
 .fieldBlock {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  // gap: 4px;
+
+  .label {
+    width: 80px;
+    display: flex;
+    align-items: center;
+    display: inline-block;
+  }
 }
 
 .fetchBar {
@@ -105,23 +111,10 @@
   border-radius: 999px;
   white-space: normal;
   word-break: break-all;
+  font-size: 16px;
 }
 
-.probeCard {
-  background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.92)),
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.34), transparent 36%);
-
-  :global(.ant-card-head-title),
-  :global(.ant-typography),
-  :global(.ant-checkbox-wrapper) {
-    color: #f8fafc;
-  }
-
-  :global(.ant-card-head) {
-    border-bottom-color: rgba(226, 232, 240, 0.12);
-  }
-}
+.probeCard {}
 
 .checkGroup {
   display: flex;
@@ -164,7 +157,7 @@
 
 .resultScroll {
   width: 100%;
-  max-height: calc(100vh - 520px);
+  max-height: calc(100vh - 720px);
   min-height: 220px;
   overflow-y: auto;
   padding-right: 4px;
@@ -223,14 +216,14 @@
 .copyLabel {
   flex: 0 0 auto;
   color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .copyValue {
   color: #0f172a;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 500;
 }
 
 .statusTag {

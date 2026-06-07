@@ -109,7 +109,7 @@ const ModelCategoryButton = ({ item, modelOptions, category, onCategoryChange })
   const handleClick = useMemoizedFn(() => onCategoryChange(item.value));
 
   return (
-    <Button size="small" type={type} onClick={handleClick}>
+    <Button type={type} onClick={handleClick}>
       {item.label}({count})
     </Button>
   );
@@ -199,10 +199,10 @@ const ModelPicker = ({ state, onFieldChange }) => {
       <div className={styles.modelToolbar}>
         <ModelCategoryTabs modelOptions={state.modelOptions} category={state.modelCategory} onCategoryChange={handleCategoryChange} />
         <div className={styles.modelActions}>
-          <Button size="small" type={isAllVisibleSelected ? 'primary' : 'default'} onClick={handleSelectVisible}>
+          <Button size="" type={isAllVisibleSelected ? 'primary' : 'default'} onClick={handleSelectVisible}>
             全选({visibleModels.length})
           </Button>
-          <Button size="small" onClick={handleClearVisible}>
+          <Button size="" onClick={handleClearVisible}>
             清空
           </Button>
           <Typography.Text type="secondary">已选 {state.selectedModels.length}</Typography.Text>
@@ -221,32 +221,32 @@ const ConfigPanel = ({ state, loading, onFieldChange, onFetchModels }) => {
   const handleTokenChange = useMemoizedFn((event) => onFieldChange('token', event.target.value));
 
   return (
-    <Card bordered={false} title="中转站配置" className={styles.panelCard}>
-      <Space direction="vertical" size={10} className={styles.fullWidth}>
+    <Card bordered={false} className={styles.panelCard}>
+      <Space orientation="vertical" size={10} className={styles.fullWidth}>
         <Row gutter={[10, 10]}>
-          <Col xs={24} md={12}>
+          <Col md={12}>
             <div className={styles.fieldBlock}>
-              <Typography.Text strong>名称</Typography.Text>
+              <Typography.Text strong className={styles.label}>名称</Typography.Text>
               <Input size="large" value={state.stationName} onChange={handleNameChange} />
             </div>
           </Col>
-          <Col xs={24} md={12}>
+          <Col md={12}>
             <div className={styles.fieldBlock}>
-              <Typography.Text strong>备注</Typography.Text>
+              <Typography.Text strong className={styles.label}>备注</Typography.Text>
               <Input size="large" value={state.remark} onChange={handleRemarkChange} />
             </div>
           </Col>
         </Row>
         <div className={styles.fieldBlock}>
-          <Typography.Text strong>Base URL</Typography.Text>
+          <Typography.Text strong className={styles.label}>URL</Typography.Text>
           <Input size="large" value={state.baseUrl} onChange={handleUrlChange} />
         </div>
         <div className={styles.fieldBlock}>
-          <Typography.Text strong>Token</Typography.Text>
+          <Typography.Text strong className={styles.label}>Token</Typography.Text>
           <Input.Password size="large" value={state.token} onChange={handleTokenChange} />
         </div>
         <div className={styles.fetchBar}>
-          <Button type="primary" loading={loading} onClick={onFetchModels}>
+          <Button type="primary" loading={loading} onClick={onFetchModels} size=''>
             拉取模型
           </Button>
           <Typography.Text type="secondary">{state.modelOptions.length} 个模型</Typography.Text>
@@ -272,17 +272,6 @@ const ProbePanel = ({ state, loading, onCheckChange, onRunDetect, onClearResults
   <Card bordered={false} title="探针检测" className={`${styles.panelCard} ${styles.probeCard}`}>
     <Space direction="vertical" size={12} className={styles.fullWidth}>
       <Checkbox.Group className={styles.checkGroup} value={state.selectedChecks} options={checkOptions} onChange={onCheckChange} />
-      <Row gutter={[10, 10]}>
-        <Col span={8}>
-          <ProbeStatCard label="模型" value={state.selectedModels.length} />
-        </Col>
-        <Col span={8}>
-          <ProbeStatCard label="探针" value={state.selectedChecks.length} />
-        </Col>
-        <Col span={8}>
-          <ProbeStatCard label="任务" value={state.selectedModels.length * state.selectedChecks.length} />
-        </Col>
-      </Row>
       <div className={styles.probeActions}>
         <Button type="primary" size="large" block loading={loading} onClick={onRunDetect}>
           开始检测
@@ -308,7 +297,7 @@ const ResultFilterButton = ({ option, status, onStatusChange }) => {
   const handleClick = useMemoizedFn(() => onStatusChange(option.value));
 
   return (
-    <Button size="small" type={type} onClick={handleClick}>
+    <Button size="" type={type} onClick={handleClick}>
       {option.label}
     </Button>
   );
@@ -377,8 +366,8 @@ const ModelResultGroup = ({ model, results }) => {
       title={
         <div className={styles.resultGroupHeader}>
           <div className={styles.resultCounters}>
-            <Tag color="green">成功 {successCount}</Tag>
-            <Tag color="red">失败 {failedCount}</Tag>
+            {/* <Tag color="green">成功 {successCount}</Tag>
+            <Tag color="red">失败 {failedCount}</Tag> */}
           </div>
           <div className={styles.resultCopyGroup}>
             <CopyChip label="模型" text={model} width={280} />
@@ -390,11 +379,10 @@ const ModelResultGroup = ({ model, results }) => {
     >
       <Table
         rowKey="id"
-        size="small"
         columns={createGroupColumns()}
         dataSource={results}
         pagination={false}
-        scroll={{ x: 860, y: 220 }}
+        bordered
       />
     </Card>
   );
@@ -528,14 +516,14 @@ const Detect = () => {
 
   return (
     <Space direction="vertical" size={10} className={`page-stack ${styles.detectPage}`}>
-      <Typography.Title level={4} className={styles.pageTitle}>
+      <Typography.Title level={5} className={styles.pageTitle}>
         AI 中转站检测台
       </Typography.Title>
       <Row gutter={[12, 12]}>
-        <Col xs={24} xl={13}>
+        <Col xl={18}>
           <ConfigPanel state={state} loading={modelLoading} onFieldChange={handleFieldChange} onFetchModels={handleFetchModels} />
         </Col>
-        <Col xs={24} xl={11}>
+        <Col xl={6}>
           <ProbePanel
             state={state}
             loading={detectLoading}
