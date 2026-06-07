@@ -1,7 +1,8 @@
-import { App, Button, Card, Col, Empty, Input, Row, Space, Typography } from 'antd';
+import { App, Card, Col, Empty, Input, Row, Space, Typography } from 'antd';
 import { useMemoizedFn, useReactive, useRequest } from 'ahooks';
 
 import styles from './index.module.less';
+import { useRef } from 'react';
 
 const { TextArea } = Input;
 
@@ -363,9 +364,6 @@ const PageHeader = () => (
     <Typography.Title className={styles.title} level={3}>
       翻译命名
     </Typography.Title>
-    <Typography.Text className={styles.subtitle} type="secondary">
-      输入中文后翻译为英文，选择需要的单词，即可生成多语言常用命名格式。
-    </Typography.Text>
   </div>
 );
 
@@ -401,55 +399,55 @@ const WordPicker = ({ words, selectedWords, onToggle }) => {
 };
 
 // 翻译选择区
-const TranslateSelector = ({ sourceText, selectedWords, words, loading, onSourceChange, onSourcePressEnter, onTranslate, onWordToggle }) => (
-  <Card className={styles.translateCard} title="翻译与选择" bordered={false}>
-    <div className={styles.translateGrid}>
-      <section className={styles.sourcePanel}>
-        <Typography.Text className={styles.panelTitle}>中文输入</Typography.Text>
-        <TextArea
-          className={styles.sourceInput}
-          autoSize={{ minRows: 4, maxRows: 8 }}
-          value={sourceText}
-          placeholder="例如：用户权限配置"
-          onChange={onSourceChange}
-          onPressEnter={onSourcePressEnter}
-        />
-        <Typography.Text className={styles.helperText}>Enter 翻译，Shift + Enter 换行</Typography.Text>
-      </section>
-      <div className={styles.actionPanel}>
-        <Button type="primary" size="large" loading={loading} onClick={onTranslate}>
-          翻译
-        </Button>
+const TranslateSelector = ({ sourceText, selectedWords, words, onSourceChange, onSourcePressEnter, onWordToggle }) => {
+  const inputRef = useRef(null);
+
+  return (
+    <Card className={styles.translateCard} bordered={false}>
+      <div className={styles.translateGrid}>
+        <section className={styles.sourcePanel}>
+          <TextArea
+            className={styles.sourceInput}
+            Rows={4}
+            value={sourceText}
+            placeholder="例如：用户权限配置"
+            onChange={onSourceChange}
+            onPressEnter={onSourcePressEnter}
+            allowClear
+            onFocus={() => {
+              inputRef?.current?.focus({
+                cursor: 'all',
+                preventScroll: 'all',
+              });
+            }}
+          />
+        </section>
+        <section className={styles.wordPanel}>
+          <WordPicker words={words} selectedWords={selectedWords} onToggle={onWordToggle} />
+        </section>
       </div>
-      <section className={styles.wordPanel}>
-        <Typography.Text className={styles.panelTitle}>选择单词</Typography.Text>
-        <WordPicker words={words} selectedWords={selectedWords} onToggle={onWordToggle} />
-      </section>
-    </div>
-  </Card>
-);
+    </Card>
+  );
+}
 
 // 命名文本
-const NamingText = ({ value, onCopy }) => {
+const NamingText = ({ label, value, onCopy }) => {
   // 点击复制
   const handleCopy = useMemoizedFn(() => {
     onCopy(value);
   });
 
   return (
-    <button type="button" className={styles.namingText} onClick={handleCopy}>
-      {value}
+    <button type="button" className={styles.namingItem} onClick={handleCopy}>
+      <span className={styles.namingLabel}>{label}</span>
+      <span className={styles.namingText}>{value}</span>
     </button>
   );
 };
 
 // 命名结果卡
 const NamingCard = ({ item, onCopy }) => (
-  <Col xs={24} md={12} xl={8} xxl={6}>
-    <Card className={styles.namingCard} bordered={false} title={item.label}>
-      <NamingText value={item.value} onCopy={onCopy} />
-    </Card>
-  </Col>
+  <NamingText label={item.label} value={item.value} onCopy={onCopy} />
 );
 
 // 命名分组
@@ -463,9 +461,11 @@ const NamingGroup = ({ group, selectedText, onCopy }) => {
   const renderNamingCard = useMemoizedFn((item) => <NamingCard key={item.label} item={item} onCopy={onCopy} />);
 
   return (
-    <Card className={styles.groupCard} bordered={false} title={group.title}>
-      <Row gutter={[14, 14]}>{namingList.map(renderNamingCard)}</Row>
-    </Card>
+    <Col xl={6} xxl={6}>
+      <Card className={styles.groupCard} bordered={false} title={group.title}>
+        <div className={styles.namingList}>{namingList.map(renderNamingCard)}</div>
+      </Card>
+    </Col>
   );
 };
 
@@ -485,7 +485,7 @@ const NamingResult = ({ selectedText, onCopy }) => {
     );
   }
 
-  return <Space direction="vertical" size={18} className={styles.resultStack}>{namingGroupList.map(renderNamingGroup)}</Space>;
+  return <Row gutter={[12, 12]}>{namingGroupList.map(renderNamingGroup)}</Row>;
 };
 
 // 翻译页面
@@ -509,7 +509,7 @@ const Translate = () => {
     message.error(error.message || '翻译失败，请稍后重试');
   });
 
-  const { run: runTranslate, loading: isTranslating } = useRequest(translateChinese, {
+  const { run: runTranslate } = useRequest(translateChinese, {
     manual: true,
     onSuccess: handleTranslateSuccess,
     onError: handleTranslateError,
@@ -518,11 +518,6 @@ const Translate = () => {
   // 更新中文输入
   const handleSourceChange = useMemoizedFn((event) => {
     state.sourceText = event.target.value;
-  });
-
-  // 触发翻译请求
-  const handleTranslate = useMemoizedFn(() => {
-    runTranslate(state.sourceText);
   });
 
   // 回车翻译
@@ -568,16 +563,14 @@ const Translate = () => {
   const selectedText = state.selectedWords.join(' ');
 
   return (
-    <Space direction="vertical" size={24} className={styles.page}>
+    <Space direction="vertical" size={8} className={styles.page}>
       <PageHeader />
       <TranslateSelector
         sourceText={state.sourceText}
         selectedWords={state.selectedWords}
         words={state.words}
-        loading={isTranslating}
         onSourceChange={handleSourceChange}
         onSourcePressEnter={handleSourcePressEnter}
-        onTranslate={handleTranslate}
         onWordToggle={handleWordToggle}
       />
       <NamingResult selectedText={selectedText} onCopy={handleCopy} />
