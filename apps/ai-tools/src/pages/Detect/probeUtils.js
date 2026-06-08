@@ -1,13 +1,14 @@
 const REQUEST_TIMEOUT = 15 * 1000;
 export const REQUEST_TIMEOUT_MESSAGE = `请求超时，已停止请求（${REQUEST_TIMEOUT / 1000}s）`;
 const MAX_OUTPUT_LENGTH = 160;
-export const DEFAULT_CHECKS = ['text'];
+export const DEFAULT_CHECKS = ['text', 'codex'];
 export const checkOptions = [
   { label: '文本能力', value: 'text' },
   { label: 'Codex', value: 'codex' },
   { label: 'Claude', value: 'claude' },
 ];
 export const statusMap = {
+  loading: { color: 'processing', text: '检测中' },
   success: { color: 'green', text: '成功' },
   failed: { color: 'red', text: '失败' },
 };
@@ -309,36 +310,50 @@ const requestProbeResult = ({ baseUrl, token, model, checkType }) => {
     prompt: '你是命令行代码助手。请用中文返回 Plan、Patch、Verify 三段，保持简短。',
   });
 };
-// 生成检测任务
-const createProbeJobs = ({ selectedModels, selectedChecks }) =>
-  selectedModels.flatMap((model) => selectedChecks.map((checkType) => ({ model, checkType })));
+// 生成模型检测组
+const createProbeGroups = ({ selectedModels, selectedChecks }) =>
+  selectedModels.map((model) => selectedChecks.map((checkType) => ({ model, checkType })));
+// 创建检测结果
+const buildProbeResult = ({ baseUrl, token, stationName, remark, job, result }) => ({
+  id: `${Date.now()}-${job.model}-${job.checkType}`,
+  stationName,
+  remark,
+  baseUrl: normalizeBaseUrl(baseUrl),
+  token,
+  model: job.model,
+  checkType: job.checkType,
+  ...result,
+});
+// 执行模型检测组
+const runProbeGroup = async ({ baseUrl, token, stationName, remark, jobs, shouldStop, onResult }) => {
+  const resultList = await Promise.all(
+    jobs.map(async (job) => {
+      const result = await runProbe({ baseUrl, token, model: job.model, checkType: job.checkType });
+      const probeResult = buildProbeResult({ baseUrl, token, stationName, remark, job, result });
+      // 重置停止边界
+      if (shouldStop?.()) {
+        return null;
+      }
+      onResult(probeResult);
+      return probeResult;
+    }),
+  );
+  return resultList.filter(Boolean);
+};
 // 执行全部探针
 export const runProbeJobs = async ({ baseUrl, token, stationName, remark, selectedModels, selectedChecks, shouldStop, onResult }) => {
-  const jobs = createProbeJobs({ selectedModels, selectedChecks });
+  const groups = createProbeGroups({ selectedModels, selectedChecks });
   let finishedCount = 0;
-  for (const job of jobs) {
+  for (const jobs of groups) {
     // 重置停止边界
     if (shouldStop?.()) {
       return finishedCount;
     }
-    const result = await runProbe({ baseUrl, token, model: job.model, checkType: job.checkType });
-    // 重置停止边界
-    if (shouldStop?.()) {
-      return finishedCount;
-    }
-    onResult({
-      id: `${Date.now()}-${job.model}-${job.checkType}`,
-      stationName,
-      remark,
-      baseUrl: normalizeBaseUrl(baseUrl),
-      token,
-      model: job.model,
-      checkType: job.checkType,
-      ...result,
-    });
-    finishedCount += 1;
+    const resultList = await runProbeGroup({ baseUrl, token, stationName, remark, jobs, shouldStop, onResult });
+    finishedCount += resultList.length;
+    const hasTimedOut = resultList.some((result) => result.isTimedOut);
     // 超时停止边界
-    if (result.isTimedOut) {
+    if (hasTimedOut) {
       return finishedCount;
     }
   }

@@ -14,7 +14,8 @@ import {
 import styles from './index.module.less';
 
 const HISTORY_STORAGE_KEY = 'ai-tools-detect-history';
-const RESULT_FILTERS = ['all', 'success', 'failed'];
+const RESULT_FILTERS = ['all', 'loading', 'success', 'failed'];
+const RESULT_STATUS_LOADING = 'loading';
 const MODEL_CATEGORIES = [
   { label: '全部', value: 'all' },
   { label: 'GPT', value: 'gpt' },
@@ -142,7 +143,15 @@ const CopyChip = ({ label, text, masked, width }) => (
 
 // 状态标签
 const StatusTag = ({ status }) => {
-  const statusClass = status === 'success' ? styles.statusSuccess : styles.statusFailed;
+  let statusClass = styles.statusFailed;
+  // 成功状态边界
+  if (status === 'success') {
+    statusClass = styles.statusSuccess;
+  }
+  // 等待状态边界
+  if (status === RESULT_STATUS_LOADING) {
+    statusClass = styles.statusLoading;
+  }
 
   return (
     <Tag className={`${styles.statusTag} ${statusClass}`} color={statusMap[status]?.color}>
@@ -191,6 +200,73 @@ const countModels = (modelOptions, category) => filterModels(modelOptions, categ
 
 // 判断是否选中
 const isModelSelected = (selectedModels, modelId) => selectedModels.includes(modelId);
+
+// 创建模型选项
+const createModelOption = (modelId) => ({ label: modelId, value: modelId });
+
+// 解析手动模型
+const parseManualModelIds = (text) => {
+  const modelIds = text
+    .split(',')
+    .map((modelId) => modelId.trim())
+    .filter(Boolean);
+  return Array.from(new Set(modelIds));
+};
+
+// 合并模型选项
+const mergeModelOptions = (modelOptions, modelIds) => {
+  const modelValueSet = new Set(modelOptions.map((model) => model.value));
+  const manualOptions = modelIds.filter((modelId) => !modelValueSet.has(modelId)).map(createModelOption);
+  return [...modelOptions, ...manualOptions];
+};
+
+// 合并检测模型
+const mergeSelectedModels = (selectedModels, modelIds) => Array.from(new Set([...selectedModels, ...modelIds]));
+
+// 创建结果 ID
+const createResultId = (requestId, model, checkType) => `${requestId}-${model}-${checkType}`;
+
+// 创建等待结果
+const buildPendingResult = ({ baseUrl, token, stationName, remark, requestId, model, checkType }) => ({
+  id: createResultId(requestId, model, checkType),
+  stationName,
+  remark,
+  baseUrl: normalizeBaseUrl(baseUrl),
+  token,
+  model,
+  checkType,
+  status: RESULT_STATUS_LOADING,
+  duration: null,
+  summary: '等待检测结果',
+});
+
+// 创建等待列表
+const buildPendingResults = ({ baseUrl, token, stationName, remark, requestId, selectedModels, selectedChecks }) =>
+  selectedModels.flatMap((model) =>
+    selectedChecks.map((checkType) => buildPendingResult({ baseUrl, token, stationName, remark, requestId, model, checkType })),
+  );
+
+// 回填检测结果
+const mergeProbeResult = (results, requestId, result) => {
+  const resultId = createResultId(requestId, result.model, result.checkType);
+  return results.map((item) => {
+    // 非当前行边界
+    if (item.id !== resultId) {
+      return item;
+    }
+    return { ...item, ...result, id: resultId };
+  });
+};
+
+// 标记等待失败
+const markPendingResultsFailed = (results, error) =>
+  results.map((item) => {
+    // 已完成边界
+    if (item.status !== RESULT_STATUS_LOADING) {
+      return item;
+    }
+    return { ...item, status: 'failed', duration: 0, summary: error?.message || '检测失败' };
+  });
 
 // 分类按钮
 const ModelCategoryButton = ({ item, modelOptions, category, onCategoryChange }) => {
@@ -494,12 +570,46 @@ const ConfigPanel = ({ state, loading, onFieldChange, onFetchModels }) => {
   );
 };
 
+// 手动模型输入
+const ManualModelInput = ({ value, onChange, onAdd }) => {
+  const handleTextChange = useMemoizedFn((event) => onChange(event.target.value));
+
+  return (
+    <div className={styles.manualModelBox}>
+      <div className={styles.manualModelHeader}>
+        <div>
+          <Typography.Text strong>手动模型 ID</Typography.Text>
+          <Typography.Text type="secondary" className={styles.manualModelHint}>
+            英文逗号分割，适用于不支持 /v1/models 的站点
+          </Typography.Text>
+        </div>
+        <Button type="primary" onClick={onAdd}>
+          加入检测列表
+        </Button>
+      </div>
+      <Input.TextArea
+        value={value}
+        autoSize={{ minRows: 2, maxRows: 4 }}
+        placeholder="例如：gpt-4.1, claude-3-5-sonnet, gemini-2.0-flash"
+        onChange={handleTextChange}
+      />
+    </div>
+  );
+};
+
 // 模型面板
-const ModelPanel = ({ state, onFieldChange }) => (
-  <Card bordered={false} title="模型选择" className={styles.panelCard}>
-    <ModelPicker state={state} onFieldChange={onFieldChange} />
-  </Card>
-);
+const ModelPanel = ({ state, onFieldChange, onAddManualModels }) => {
+  const handleManualTextChange = useMemoizedFn((value) => onFieldChange('manualModelText', value));
+
+  return (
+    <Card bordered={false} title="模型选择" className={styles.panelCard}>
+      <Space direction="vertical" size={10} className={styles.fullWidth}>
+        <ManualModelInput value={state.manualModelText} onChange={handleManualTextChange} onAdd={onAddManualModels} />
+        <ModelPicker state={state} onFieldChange={onFieldChange} />
+      </Space>
+    </Card>
+  );
+};
 
 // 检测统计项
 const ProbeStatCard = ({ label, value }) => (
@@ -552,6 +662,7 @@ const ResultFilterButton = ({ option, status, onStatusChange }) => {
 const ResultFilter = ({ results, status, onStatusChange }) => {
   const options = [
     { label: `全部(${countResults(results, 'all')})`, value: 'all' },
+    { label: `检测中(${countResults(results, RESULT_STATUS_LOADING)})`, value: RESULT_STATUS_LOADING },
     { label: `成功(${countResults(results, 'success')})`, value: 'success' },
     { label: `失败(${countResults(results, 'failed')})`, value: 'failed' },
   ];
@@ -580,7 +691,13 @@ const createGroupColumns = () => [
     title: '耗时',
     dataIndex: 'duration',
     width: 100,
-    render: (duration) => <CopyText text={`${duration}ms`} width={90} />,
+    render: (duration, record) => {
+      // 等待状态边界
+      if (record.status === RESULT_STATUS_LOADING) {
+        return <Typography.Text type="secondary">-</Typography.Text>;
+      }
+      return <CopyText text={`${duration}ms`} width={90} />;
+    },
   },
   {
     title: '结果',
@@ -648,6 +765,15 @@ const ResultTable = ({ results, status, onStatusChange }) => {
     );
   }
 
+  // 筛选空态边界
+  if (visibleResults.length === 0) {
+    return (
+      <Card bordered={false} title="检测结果" className={styles.resultCard} extra={<ResultFilter results={results} status={status} onStatusChange={onStatusChange} />}>
+        <Empty description="暂无匹配结果" />
+      </Card>
+    );
+  }
+
   return (
     <Card bordered={false} title="检测结果" className={styles.resultCard} extra={<ResultFilter results={results} status={status} onStatusChange={onStatusChange} />}>
       <Space direction="vertical" size={10} className={styles.resultScroll}>
@@ -666,6 +792,7 @@ const Detect = () => {
     remark: '',
     baseUrl: '',
     token: '',
+    manualModelText: '',
     modelOptions: [],
     modelCategory: 'all',
     selectedModels: [],
@@ -688,7 +815,7 @@ const Detect = () => {
       }
       state.modelOptions = options;
       state.modelCategory = 'all';
-      state.selectedModels = options.map((option) => option.value);
+      state.selectedModels = [];
       message.success(`模型 ${options.length}`);
     },
     onError: (error) => {
@@ -705,7 +832,13 @@ const Detect = () => {
       }
       message.success(`完成 ${count}`);
     },
-    onError: (error) => {
+    onError: (error, params) => {
+      const requestId = params?.[0]?.requestId;
+      // 过期请求边界
+      if (requestId !== state.requestId) {
+        return;
+      }
+      state.results = markPendingResultsFailed(state.results, error);
       message.error(error?.message || '检测失败');
     },
   });
@@ -729,13 +862,13 @@ const Detect = () => {
     state.resultStatus = status;
   });
 
-  // 写入检测结果
-  const handleResultAppend = useMemoizedFn((requestId, result) => {
+  // 回填检测结果
+  const handleResultUpdate = useMemoizedFn((requestId, result) => {
     // 过期结果边界
     if (requestId !== state.requestId) {
       return;
     }
-    state.results = [result, ...state.results];
+    state.results = mergeProbeResult(state.results, requestId, result);
   });
 
   // 保存历史记录
@@ -844,8 +977,24 @@ const Detect = () => {
     state.token = record.token || '';
     state.modelOptions = [];
     state.selectedModels = [];
+    state.manualModelText = '';
     state.modelCategory = 'all';
     state.historyOpen = false;
+  });
+
+  // 加入手动模型
+  const handleAddManualModels = useMemoizedFn(() => {
+    const modelIds = parseManualModelIds(state.manualModelText);
+    // 空输入边界
+    if (modelIds.length === 0) {
+      message.warning('请输入模型 ID');
+      return;
+    }
+    state.modelOptions = mergeModelOptions(state.modelOptions, modelIds);
+    state.selectedModels = mergeSelectedModels(state.selectedModels, modelIds);
+    state.modelCategory = 'all';
+    state.manualModelText = '';
+    message.success(`已加入 ${modelIds.length} 个模型`);
   });
 
   // 拉取模型前校验
@@ -886,18 +1035,30 @@ const Detect = () => {
     if (!hasSaved) {
       return;
     }
+    const selectedModels = [...state.selectedModels];
+    const selectedChecks = [...state.selectedChecks];
     state.requestId += 1;
+    state.resultStatus = 'all';
     const requestId = state.requestId;
+    state.results = buildPendingResults({
+      baseUrl: state.baseUrl,
+      token: state.token,
+      stationName: state.stationName || '未命名',
+      remark: state.remark,
+      selectedModels,
+      selectedChecks,
+      requestId,
+    });
     runDetect({
       baseUrl: state.baseUrl,
       token: state.token,
       stationName: state.stationName || '未命名',
       remark: state.remark,
-      selectedModels: state.selectedModels,
-      selectedChecks: state.selectedChecks,
+      selectedModels,
+      selectedChecks,
       requestId,
       shouldStop: () => requestId !== state.requestId,
-      onResult: (result) => handleResultAppend(requestId, result),
+      onResult: (result) => handleResultUpdate(requestId, result),
     });
   });
 
@@ -916,6 +1077,7 @@ const Detect = () => {
     state.modelOptions = [];
     state.modelCategory = 'all';
     state.selectedModels = [];
+    state.manualModelText = '';
     state.selectedChecks = DEFAULT_CHECKS;
     state.resultStatus = 'all';
     state.results = [];
@@ -941,7 +1103,7 @@ const Detect = () => {
           />
         </Col>
       </Row>
-      <ModelPanel state={state} onFieldChange={handleFieldChange} />
+      <ModelPanel state={state} onFieldChange={handleFieldChange} onAddManualModels={handleAddManualModels} />
       <ResultTable results={state.results} status={state.resultStatus} onStatusChange={handleResultStatusChange} />
       <HistoryModal
         state={state}

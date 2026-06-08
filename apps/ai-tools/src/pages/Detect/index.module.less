@@ -109,6 +109,29 @@
   gap: 6px;
 }
 
+.manualModelBox {
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(248, 250, 252, 0.94)),
+    radial-gradient(circle at 96% 10%, rgba(22, 119, 255, 0.14), transparent 30%);
+  border: 1px dashed rgba(22, 119, 255, 0.28);
+  border-radius: 14px;
+}
+
+.manualModelHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.manualModelHint {
+  display: block;
+  margin-top: 2px;
+}
+
 .modelGrid {
   display: flex;
   flex-wrap: wrap;
@@ -256,6 +279,10 @@
 
 .statusSuccess {
   box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.12);
+}
+
+.statusLoading {
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.12);
 }
 
 .statusFailed {
