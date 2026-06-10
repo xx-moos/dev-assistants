@@ -1,11 +1,11 @@
 const REQUEST_TIMEOUT = 15 * 1000;
 export const REQUEST_TIMEOUT_MESSAGE = `请求超时，已停止请求（${REQUEST_TIMEOUT / 1000}s）`;
 const MAX_OUTPUT_LENGTH = 160;
-export const DEFAULT_CHECKS = ['text', 'codex'];
+export const DEFAULT_CHECK = 'codex';
 export const checkOptions = [
-  { label: '文本能力', value: 'text' },
-  { label: 'Codex', value: 'codex' },
-  { label: 'Claude', value: 'claude' },
+  { label: '对话', value: 'chat' },
+  { label: 'Codex Cli', value: 'codex' },
+  { label: 'Claude Code', value: 'claude' },
 ];
 export const statusMap = {
   loading: { color: 'processing', text: '检测中' },
@@ -155,7 +155,7 @@ export const fetchModelOptions = async ({ baseUrl, token }) => {
 const createChatBody = ({ model, prompt, extraBody = {} }) => ({
   model,
   messages: [
-    { role: 'system', content: '你正在处理企业内部集成联调记录，请保持输出简短、稳定、低敏。' },
+    { role: 'system', content: '用一句话回答,0.11和0.9谁大？' },
     { role: 'user', content: prompt },
   ],
   temperature: 0,

@@ -1,21 +1,19 @@
 import { useRef } from 'react';
-import { Button, Card, Checkbox, Col, Empty, Input, Modal, Popconfirm, Row, Space, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Empty, Input, Modal, Popconfirm, Radio, Row, Space, Table, Tag, Typography, message } from 'antd';
 import { useMemoizedFn, useReactive, useRequest } from 'ahooks';
 import {
-  DEFAULT_CHECKS,
+  DEFAULT_CHECK,
   checkNameMap,
   checkOptions,
   fetchModelOptions,
   maskToken,
   normalizeBaseUrl,
-  runProbeJobs,
-  statusMap,
 } from './probeUtils';
 import styles from './index.module.less';
 
 const HISTORY_STORAGE_KEY = 'ai-tools-detect-history';
-const RESULT_FILTERS = ['all', 'loading', 'success', 'failed'];
-const RESULT_STATUS_LOADING = 'loading';
+const SHELL_SINGLE_QUOTE_ESCAPE = "'\\''";
+const CURL_CODE_MIN_ROWS = 24;
 const MODEL_CATEGORIES = [
   { label: '全部', value: 'all' },
   { label: 'GPT', value: 'gpt' },
@@ -141,23 +139,100 @@ const CopyChip = ({ label, text, masked, width }) => (
   </span>
 );
 
-// 状态标签
-const StatusTag = ({ status }) => {
-  let statusClass = styles.statusFailed;
-  // 成功状态边界
-  if (status === 'success') {
-    statusClass = styles.statusSuccess;
-  }
-  // 等待状态边界
-  if (status === RESULT_STATUS_LOADING) {
-    statusClass = styles.statusLoading;
-  }
+// curl 代码块
+const CurlCodeBlock = ({ code }) => {
+  const handleCopy = useMemoizedFn(() => copyText(code));
 
   return (
-    <Tag className={`${styles.statusTag} ${statusClass}`} color={statusMap[status]?.color}>
-      {statusMap[status]?.text}
-    </Tag>
+    <Space direction="vertical" size={8} className={styles.fullWidth}>
+      <Input.TextArea
+        readOnly
+        value={code}
+        rows={CURL_CODE_MIN_ROWS}
+        className={styles.curlCode}
+      />
+      <Button onClick={handleCopy}>复制 curl</Button>
+    </Space>
   );
+};
+
+// 转义 shell 文本
+const escapeShellText = (text) => String(text).replace(/'/g, SHELL_SINGLE_QUOTE_ESCAPE);
+
+// 包装 shell 文本
+const quoteShellText = (text) => `'${escapeShellText(text)}'`;
+
+// 创建接口地址
+const buildCurlUrl = (baseUrl, path) => `${normalizeBaseUrl(baseUrl)}${path}`;
+
+// 创建对话载荷
+const createChatCurlBody = (model) => ({
+  model,
+  messages: [
+    { role: 'user', content: '用一句话回答,0.11和0.9谁大？' },
+  ],
+  temperature: 0,
+});
+
+// 创建 Codex 载荷
+const createCodexCurlBody = (model) => ({
+  model,
+  input: '你是 Codex CLI。请用三行输出：计划、文件、验证，内容模拟一次最小代码修改。',
+  temperature: 0,
+});
+
+// 创建 Claude 载荷
+const createClaudeCurlBody = (model) => ({
+  model,
+  max_tokens: 256,
+  system: '你正在处理 Claude Code 请求，请保持输出简短、稳定、低敏。',
+  messages: [{ role: 'user', content: '请用中文返回 Plan、Patch、Verify 三段，保持简短。' }],
+});
+
+// 创建 curl 规格
+const createCurlSpec = ({ model, checkType }) => {
+  // Codex 边界
+  if (checkType === 'codex') {
+    return { path: '/v1/responses', body: createCodexCurlBody(model), authType: 'bearer' };
+  }
+  // Claude 边界
+  if (checkType === 'claude') {
+    return { path: '/v1/messages', body: createClaudeCurlBody(model), authType: 'anthropic' };
+  }
+  return { path: '/v1/chat/completions', body: createChatCurlBody(model), authType: 'bearer' };
+};
+
+// 创建 curl 请求头
+const createCurlHeaders = ({ token, authType }) => {
+  // Claude 认证边界
+  if (authType === 'anthropic') {
+    return [
+      { name: 'x-api-key', value: token.trim() },
+      { name: 'anthropic-version', value: '2023-06-01' },
+      { name: 'content-type', value: 'application/json' },
+    ];
+  }
+  return [
+    { name: 'Authorization', value: `Bearer ${token.trim()}` },
+    { name: 'Content-Type', value: 'application/json' },
+  ];
+};
+
+// 创建 header 行
+const buildHeaderLines = (headers) => headers.map((header) => `  -H ${quoteShellText(`${header.name}: ${header.value}`)} \\`);
+
+// 创建 curl 命令
+const buildCurlCode = ({ baseUrl, token, model, checkType }) => {
+  const spec = createCurlSpec({ model, checkType });
+  const headers = createCurlHeaders({ token, authType: spec.authType });
+  const body = JSON.stringify(spec.body, null, 2);
+
+  return [
+    `curl  -sS  ${quoteShellText(buildCurlUrl(baseUrl, spec.path))} \\`,
+    '  -X POST \\',
+    ...buildHeaderLines(headers),
+    `  -d ${quoteShellText(body)}`,
+  ].join('\n');
 };
 
 // 获取模型分类
@@ -226,8 +301,8 @@ const mergeSelectedModels = (selectedModels, modelIds) => Array.from(new Set([..
 // 创建结果 ID
 const createResultId = (requestId, model, checkType) => `${requestId}-${model}-${checkType}`;
 
-// 创建等待结果
-const buildPendingResult = ({ baseUrl, token, stationName, remark, requestId, model, checkType }) => ({
+// 创建脚本结果
+const buildCurlResult = ({ baseUrl, token, stationName, remark, requestId, model, checkType }) => ({
   id: createResultId(requestId, model, checkType),
   stationName,
   remark,
@@ -235,38 +310,14 @@ const buildPendingResult = ({ baseUrl, token, stationName, remark, requestId, mo
   token,
   model,
   checkType,
-  status: RESULT_STATUS_LOADING,
-  duration: null,
-  summary: '等待检测结果',
+  curlCode: buildCurlCode({ baseUrl, token, model, checkType }),
 });
 
-// 创建等待列表
-const buildPendingResults = ({ baseUrl, token, stationName, remark, requestId, selectedModels, selectedChecks }) =>
+// 创建脚本列表
+const buildCurlResults = ({ baseUrl, token, stationName, remark, requestId, selectedModels, selectedChecks }) =>
   selectedModels.flatMap((model) =>
-    selectedChecks.map((checkType) => buildPendingResult({ baseUrl, token, stationName, remark, requestId, model, checkType })),
+    selectedChecks.map((checkType) => buildCurlResult({ baseUrl, token, stationName, remark, requestId, model, checkType })),
   );
-
-// 回填检测结果
-const mergeProbeResult = (results, requestId, result) => {
-  const resultId = createResultId(requestId, result.model, result.checkType);
-  return results.map((item) => {
-    // 非当前行边界
-    if (item.id !== resultId) {
-      return item;
-    }
-    return { ...item, ...result, id: resultId };
-  });
-};
-
-// 标记等待失败
-const markPendingResultsFailed = (results, error) =>
-  results.map((item) => {
-    // 已完成边界
-    if (item.status !== RESULT_STATUS_LOADING) {
-      return item;
-    }
-    return { ...item, status: 'failed', duration: 0, summary: error?.message || '检测失败' };
-  });
 
 // 分类按钮
 const ModelCategoryButton = ({ item, modelOptions, category, onCategoryChange }) => {
@@ -412,7 +463,6 @@ const HistoryModal = ({ state, onKeywordChange, onImport, onExport, onSelect, on
   const handleKeywordChange = useMemoizedFn((event) => onKeywordChange(event.target.value));
 
 
-
   // 触发导入
   const handleImportClick = useMemoizedFn(() => fileRef.current?.click());
 
@@ -452,30 +502,21 @@ const HistoryModal = ({ state, onKeywordChange, onImport, onExport, onSelect, on
     {
       title: '名称',
       dataIndex: 'stationName',
-      width: 130,
-      render: renderName,
+      width: 80,
     },
     {
       title: 'URL',
       dataIndex: 'baseUrl',
-      width: 150,
-      render: renderUrl,
+      width: 200,
     },
     {
       title: 'Token',
       dataIndex: 'token',
-      width: 150,
-      render: renderToken,
+      width: 200,
     },
     {
       title: '备注',
       dataIndex: 'remark',
-      render: renderToken,
-    },
-    {
-      title: '更新时间',
-      dataIndex: 'updatedAt',
-      width: 170,
     },
     {
       title: '操作',
@@ -623,86 +664,32 @@ const ProbeStatCard = ({ label, value }) => (
 
 // 检测面板
 const ProbePanel = ({ state, loading, onCheckChange, onRunDetect, onClearResults, onReset }) => (
-  <Card bordered={false} title="探针检测" className={`${styles.panelCard} ${styles.probeCard}`}>
+  <Card bordered={false} title="脚本生成" className={`${styles.panelCard} ${styles.probeCard}`}>
     <Space direction="vertical" size={12} className={styles.fullWidth}>
-      <Checkbox.Group className={styles.checkGroup} value={state.selectedChecks} options={checkOptions} onChange={onCheckChange} />
+      <Radio.Group className={styles.checkGroup} value={state.selectedCheck} options={checkOptions} onChange={onCheckChange} />
       <div className={styles.probeActions}>
         <Button type="primary" size="large" block loading={loading} onClick={onRunDetect}>
-          开始检测
+          生成脚本
         </Button>
-        <Button onClick={onClearResults}>清空结果</Button>
+        <Button onClick={onClearResults}>清空脚本</Button>
         <Button danger onClick={onReset}>重置</Button>
       </div>
     </Space>
   </Card>
 );
 
-// 统计结果数量
-const countResults = (results, status) => {
-  // 全部结果边界
-  if (status === 'all') {
-    return results.length;
-  }
-  return results.filter((result) => result.status === status).length;
-};
-
-// 筛选按钮
-const ResultFilterButton = ({ option, status, onStatusChange }) => {
-  const type = status === option.value ? 'primary' : 'default';
-  const handleClick = useMemoizedFn(() => onStatusChange(option.value));
-
-  return (
-    <Button size="" type={type} onClick={handleClick}>
-      {option.label}
-    </Button>
-  );
-};
-
-// 结果筛选栏
-const ResultFilter = ({ results, status, onStatusChange }) => {
-  const options = [
-    { label: `全部(${countResults(results, 'all')})`, value: 'all' },
-    { label: `检测中(${countResults(results, RESULT_STATUS_LOADING)})`, value: RESULT_STATUS_LOADING },
-    { label: `成功(${countResults(results, 'success')})`, value: 'success' },
-    { label: `失败(${countResults(results, 'failed')})`, value: 'failed' },
-  ];
-  const renderOption = useMemoizedFn((option) => (
-    <ResultFilterButton key={option.value} option={option} status={status} onStatusChange={onStatusChange} />
-  ));
-
-  return <Space wrap>{options.map(renderOption)}</Space>;
-};
-
 // 创建分组列
 const createGroupColumns = () => [
   {
-    title: '检测',
+    title: '类型',
     dataIndex: 'checkType',
     width: 110,
     render: (text) => <CopyText text={checkNameMap[text] || text} width={110} />,
   },
   {
-    title: '状态',
-    dataIndex: 'status',
-    width: 90,
-    render: (status) => <StatusTag status={status} />,
-  },
-  {
-    title: '耗时',
-    dataIndex: 'duration',
-    width: 100,
-    render: (duration, record) => {
-      // 等待状态边界
-      if (record.status === RESULT_STATUS_LOADING) {
-        return <Typography.Text type="secondary">-</Typography.Text>;
-      }
-      return <CopyText text={`${duration}ms`} width={90} />;
-    },
-  },
-  {
-    title: '结果',
-    dataIndex: 'summary',
-    render: (text) => <CopyText text={text} className={styles.summaryText} />,
+    title: 'curl 脚本',
+    dataIndex: 'curlCode',
+    render: (code) => <CurlCodeBlock code={code} />,
   },
 ];
 
@@ -714,11 +701,9 @@ const groupResultsByModel = (results) =>
     return groups;
   }, {});
 
-// 结果分组表
+// 脚本分组表
 const ModelResultGroup = ({ model, results }) => {
   const firstResult = results[0];
-  const successCount = countResults(results, 'success');
-  const failedCount = countResults(results, 'failed');
 
   return (
     <Card
@@ -727,10 +712,6 @@ const ModelResultGroup = ({ model, results }) => {
       className={styles.resultGroup}
       title={
         <div className={styles.resultGroupHeader}>
-          <div className={styles.resultCounters}>
-            {/* <Tag color="green">成功 {successCount}</Tag>
-            <Tag color="red">失败 {failedCount}</Tag> */}
-          </div>
           <div className={styles.resultCopyGroup}>
             <CopyChip label="模型" text={model} width={280} />
             <CopyChip label="URL" text={firstResult?.baseUrl} width={240} />
@@ -750,32 +731,22 @@ const ModelResultGroup = ({ model, results }) => {
   );
 };
 
-// 结果表格
-const ResultTable = ({ results, status, onStatusChange }) => {
-  const visibleResults = status === 'all' ? results : results.filter((result) => result.status === status);
-  const groupedResults = groupResultsByModel(visibleResults);
+// 脚本表格
+const ResultTable = ({ results }) => {
+  const groupedResults = groupResultsByModel(results);
   const modelIds = Object.keys(groupedResults);
 
-  // 空结果边界
+  // 空脚本边界
   if (results.length === 0) {
     return (
-      <Card bordered={false} title="检测结果" className={styles.resultCard}>
-        <Empty description="暂无结果" />
-      </Card>
-    );
-  }
-
-  // 筛选空态边界
-  if (visibleResults.length === 0) {
-    return (
-      <Card bordered={false} title="检测结果" className={styles.resultCard} extra={<ResultFilter results={results} status={status} onStatusChange={onStatusChange} />}>
-        <Empty description="暂无匹配结果" />
+      <Card bordered={false} title="curl 脚本" className={styles.resultCard}>
+        <Empty description="暂无脚本" />
       </Card>
     );
   }
 
   return (
-    <Card bordered={false} title="检测结果" className={styles.resultCard} extra={<ResultFilter results={results} status={status} onStatusChange={onStatusChange} />}>
+    <Card bordered={false} title="curl 脚本" className={styles.resultCard}>
       <Space direction="vertical" size={10} className={styles.resultScroll}>
         {modelIds.map((model) => (
           <ModelResultGroup key={model} model={model} results={groupedResults[model]} />
@@ -796,8 +767,7 @@ const Detect = () => {
     modelOptions: [],
     modelCategory: 'all',
     selectedModels: [],
-    selectedChecks: DEFAULT_CHECKS,
-    resultStatus: 'all',
+    selectedCheck: DEFAULT_CHECK,
     results: [],
     historyOpen: false,
     historyKeyword: '',
@@ -822,53 +792,14 @@ const Detect = () => {
       message.error(error?.message || '模型拉取失败');
     },
   });
-  const { loading: detectLoading, run: runDetect } = useRequest(runProbeJobs, {
-    manual: true,
-    onSuccess: (count, params) => {
-      const requestId = params?.[0]?.requestId;
-      // 过期请求边界
-      if (requestId !== state.requestId) {
-        return;
-      }
-      message.success(`完成 ${count}`);
-    },
-    onError: (error, params) => {
-      const requestId = params?.[0]?.requestId;
-      // 过期请求边界
-      if (requestId !== state.requestId) {
-        return;
-      }
-      state.results = markPendingResultsFailed(state.results, error);
-      message.error(error?.message || '检测失败');
-    },
-  });
-
   // 更新字段值
   const handleFieldChange = useMemoizedFn((field, value) => {
     state[field] = value;
   });
 
   // 更新检测项
-  const handleCheckChange = useMemoizedFn((values) => {
-    state.selectedChecks = values;
-  });
-
-  // 更新结果分类
-  const handleResultStatusChange = useMemoizedFn((status) => {
-    // 状态边界
-    if (!RESULT_FILTERS.includes(status)) {
-      return;
-    }
-    state.resultStatus = status;
-  });
-
-  // 回填检测结果
-  const handleResultUpdate = useMemoizedFn((requestId, result) => {
-    // 过期结果边界
-    if (requestId !== state.requestId) {
-      return;
-    }
-    state.results = mergeProbeResult(state.results, requestId, result);
+  const handleCheckChange = useMemoizedFn((e) => {
+    state.selectedCheck = e.target.value;
   });
 
   // 保存历史记录
@@ -1018,7 +949,7 @@ const Detect = () => {
     runFetchModels({ baseUrl: state.baseUrl, token: state.token, requestId: state.requestId });
   });
 
-  // 开始检测前校验
+  // 生成脚本前校验
   const handleRunDetect = useMemoizedFn(() => {
     // 模型边界
     if (state.selectedModels.length === 0) {
@@ -1026,7 +957,7 @@ const Detect = () => {
       return;
     }
     // 探针边界
-    if (state.selectedChecks.length === 0) {
+    if (!state.selectedCheck) {
       message.warning('探针');
       return;
     }
@@ -1036,11 +967,10 @@ const Detect = () => {
       return;
     }
     const selectedModels = [...state.selectedModels];
-    const selectedChecks = [...state.selectedChecks];
+    const selectedChecks = [state.selectedCheck];
     state.requestId += 1;
-    state.resultStatus = 'all';
     const requestId = state.requestId;
-    state.results = buildPendingResults({
+    const results = buildCurlResults({
       baseUrl: state.baseUrl,
       token: state.token,
       stationName: state.stationName || '未命名',
@@ -1049,20 +979,11 @@ const Detect = () => {
       selectedChecks,
       requestId,
     });
-    runDetect({
-      baseUrl: state.baseUrl,
-      token: state.token,
-      stationName: state.stationName || '未命名',
-      remark: state.remark,
-      selectedModels,
-      selectedChecks,
-      requestId,
-      shouldStop: () => requestId !== state.requestId,
-      onResult: (result) => handleResultUpdate(requestId, result),
-    });
+    state.results = results;
+    message.success(`已生成 ${results.length} 条脚本`);
   });
 
-  // 清空检测结果
+  // 清空脚本结果
   const handleClearResults = useMemoizedFn(() => {
     state.results = [];
   });
@@ -1078,8 +999,7 @@ const Detect = () => {
     state.modelCategory = 'all';
     state.selectedModels = [];
     state.manualModelText = '';
-    state.selectedChecks = DEFAULT_CHECKS;
-    state.resultStatus = 'all';
+    state.selectedCheck = DEFAULT_CHECK;
     state.results = [];
     state.selectedHistoryId = '';
     message.success('已重置');
@@ -1095,7 +1015,7 @@ const Detect = () => {
         <Col xl={6}>
           <ProbePanel
             state={state}
-            loading={detectLoading}
+            loading={false}
             onCheckChange={handleCheckChange}
             onRunDetect={handleRunDetect}
             onClearResults={handleClearResults}
@@ -1104,7 +1024,7 @@ const Detect = () => {
         </Col>
       </Row>
       <ModelPanel state={state} onFieldChange={handleFieldChange} onAddManualModels={handleAddManualModels} />
-      <ResultTable results={state.results} status={state.resultStatus} onStatusChange={handleResultStatusChange} />
+      <ResultTable results={state.results} />
       <HistoryModal
         state={state}
         onKeywordChange={handleHistoryKeywordChange}
