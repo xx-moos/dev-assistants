@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Config Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-tertiary: #1a1a1a;
+      --accent: #00ff88;
+      --accent-dim: #00cc70;
+      --text-primary: #e0e0e0;
+      --text-secondary: #999999;
+      --border: #333333;
+      --border-focus: #00ff88;
+      --code-bg: #0d0d0d;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    .header {
+      height: 48px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .header h1 {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 6px 12px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg-primary);
+      font-weight: 500;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .left-panel {
+      width: 380px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .panel-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .panel-content::-webkit-scrollbar-track {
+      background: var(--bg-tertiary);
+    }
+
+    .panel-content::-webkit-scrollbar-thumb {
+      background: var(--border);
+    }
+
+    .panel-content::-webkit-scrollbar-thumb:hover {
+      background: var(--accent);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input {
+      width: 100%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 8px rgba(0, 255, 136, 0.2);
+    }
+
+    .form-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .model-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      padding: 8px;
+    }
+
+    .model-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 4px;
+      font-size: 12px;
+      transition: background 0.15s;
+    }
+
+    .model-item:hover {
+      background: var(--bg-secondary);
+    }
+
+    .model-item input[type="checkbox"] {
+      margin-right: 8px;
+      accent-color: var(--accent);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .radio-label {
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .radio-label input[type="radio"] {
+      margin-right: 6px;
+      accent-color: var(--accent);
+    }
+
+    .curl-section {
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      background: var(--code-bg);
+    }
+
+    .curl-header {
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .curl-model {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent);
+    }
+
+    .curl-body {
+      padding: 12px;
+      position: relative;
+    }
+
+    .curl-code {
+      font-size: 11px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      word-break: break-all;
+      white-space: pre-wrap;
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 4px 8px;
+      font-family: inherit;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .copy-btn.copied {
+      border-color: var(--accent);
+      color: var(--accent);
+      animation: pulse 0.3s;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+      animation: fadeIn 0.2s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      width: 800px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.3s;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--accent);
+    }
+
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .config-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .config-item {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: border-color 0.2s;
+    }
+
+    .config-item:hover {
+      border-color: var(--accent);
+    }
+
+    .config-info {
+      flex: 1;
+    }
+
+    .config-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .config-url {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .config-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .add-model-form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .add-model-input {
+      flex: 1;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 6px 8px;
+      font-family: inherit;
+      font-size: 12px;
+    }
+
+    .add-model-btn {
+      padding: 6px 12px;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [url, setUrl] = useState('');
+      const [token, setToken] = useState('');
+      const [name, setName] = useState('');
+      const [remark, setRemark] = useState('');
+      const [models, setModels] = useState([]);
+      const [selectedModels, setSelectedModels] = useState([]);
+      const [curlType, setCurlType] = useState('chat');
+      const [curls, setCurls] = useState([]);
+      const [showModal, setShowModal] = useState(false);
+      const [configs, setConfigs] = useState([]);
+      const [newModel, setNewModel] = useState('');
+
+      useEffect(() => {
+        loadConfigs();
+      }, []);
+
+      const loadConfigs = () => {
+        const saved = localStorage.getItem('model_configs');
+        if (saved) {
+          setConfigs(JSON.parse(saved));
+        }
+      };
+
+      const fetchModels = async () => {
+        if (!url || !token) return;
+
+        try {
+          const res = await fetch(`${url}/v1/models`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          setModels(data.data?.map(m => m.id) || []);
+        } catch (err) {
+          console.error('Failed to fetch models:', err);
+        }
+      };
+
+      const addManualModel = () => {
+        if (newModel && !models.includes(newModel)) {
+          setModels([...models, newModel]);
+          setNewModel('');
+        }
+      };
+
+      const toggleModel = (model) => {
+        setSelectedModels(prev =>
+          prev.includes(model)
+            ? prev.filter(m => m !== model)
+            : [...prev, model]
+        );
+      };
+
+      const generateCurls = () => {
+        if (!url || !token || selectedModels.length === 0) return;
+
+        const templates = {
+          chat: (model) => `curl ${url}/v1/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${token}" \\
+  -d '{
+    "model": "${model}",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'`,
+          codex: (model) => `curl ${url}/v1/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${token}" \\
+  -d '{
+    "model": "${model}",
+    "prompt": "def hello_world():",
+    "max_tokens": 100
+  }'`,
+          'claude-code': (model) => `curl ${url}/v1/messages \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: ${token}" \\
+  -H "anthropic-version: 2023-06-01" \\
+  -d '{
+    "model": "${model}",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'`
+        };
+
+        const generated = selectedModels.map(model => ({
+          model,
+          curl: templates[curlType](model)
+        }));
+
+        setCurls(generated);
+      };
+
+      const saveConfig = () => {
+        if (!url || !token || !name) return;
+
+        const id = btoa(url + token);
+        const config = { id, url, token, name, remark, models: selectedModels };
+
+        const updated = configs.filter(c => c.id !== id);
+        updated.push(config);
+
+        setConfigs(updated);
+        localStorage.setItem('model_configs', JSON.stringify(updated));
+        generateCurls();
+      };
+
+      const deleteConfig = (id) => {
+        const updated = configs.filter(c => c.id !== id);
+        setConfigs(updated);
+        localStorage.setItem('model_configs', JSON.stringify(updated));
+      };
+
+      const loadConfig = (config) => {
+        setUrl(config.url);
+        setToken(config.token);
+        setName(config.name);
+        setRemark(config.remark || '');
+        setSelectedModels(config.models || []);
+        setShowModal(false);
+      };
+
+      const exportConfigs = () => {
+        const blob = new Blob([JSON.stringify(configs, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'model-configs.json';
+        a.click();
+      };
+
+      const importConfigs = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const imported = JSON.parse(e.target.result);
+            setConfigs(imported);
+            localStorage.setItem('model_configs', JSON.stringify(imported));
+          } catch (err) {
+            console.error('Invalid JSON file');
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      const copyToClipboard = (text, index) => {
+        navigator.clipboard.writeText(text);
+        const btn = document.querySelector(`[data-index="${index}"]`);
+        btn.classList.add('copied');
+        setTimeout(() => btn.classList.remove('copied'), 300);
+      };
+
+      return (
+        <div className="container">
+          <div className="header">
+            <h1>MODEL CONFIG MANAGER</h1>
+            <div className="header-actions">
+              <button className="btn" onClick={() => setShowModal(true)}>管理</button>
+              <label className="btn">
+                导入
+                <input type="file" accept=".json" onChange={importConfigs} style={{display: 'none'}} />
+              </label>
+              <button className="btn" onClick={exportConfigs}>导出</button>
+            </div>
+          </div>
+
+          <div className="main">
+            <div className="left-panel">
+              <div className="panel-content">
+                <div className="form-group">
+                  <label className="form-label">URL</label>
+                  <input
+                    className="form-input"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://api.example.com"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Token</label>
+                  <input
+                    className="form-input"
+                    type="password"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder="sk-..."
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Name</label>
+                  <input
+                    className="form-input"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="配置名称"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">备注</label>
+                  <input
+                    className="form-input"
+                    value={remark}
+                    onChange={(e) => setRemark(e.target.value)}
+                    placeholder="可选"
+                  />
+                </div>
+
+                <button className="btn btn-primary" style={{width: '100%', marginBottom: '16px'}} onClick={fetchModels}>
+                  拉取模型列表
+                </button>
+
+                <div className="form-group">
+                  <label className="form-label">手动添加模型</label>
+                  <div className="add-model-form">
+                    <input
+                      className="add-model-input"
+                      value={newModel}
+                      onChange={(e) => setNewModel(e.target.value)}
+                      placeholder="模型名称"
+                      onKeyPress={(e) => e.key === 'Enter' && addManualModel()}
+                    />
+                    <button className="btn add-model-btn" onClick={addManualModel}>添加</button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">模型选择</label>
+                  <div className="model-list">
+                    {models.length === 0 ? (
+                      <div className="empty-state" style={{padding: '20px'}}>
+                        暂无模型
+                      </div>
+                    ) : (
+                      models.map(model => (
+                        <div key={model} className="model-item">
+                          <input
+                            type="checkbox"
+                            checked={selectedModels.includes(model)}
+                            onChange={() => toggleModel(model)}
+                          />
+                          <span>{model}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="right-panel">
+              <div className="panel-content">
+                <div className="radio-group">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      value="chat"
+                      checked={curlType === 'chat'}
+                      onChange={(e) => setCurlType(e.target.value)}
+                    />
+                    Chat
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      value="codex"
+                      checked={curlType === 'codex'}
+                      onChange={(e) => setCurlType(e.target.value)}
+                    />
+                    Codex
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      value="claude-code"
+                      checked={curlType === 'claude-code'}
+                      onChange={(e) => setCurlType(e.target.value)}
+                    />
+                    Claude Code
+                  </label>
+                </div>
+
+                <button className="btn btn-primary" style={{marginBottom: '20px'}} onClick={saveConfig}>
+                  生成并保存
+                </button>
+
+                {curls.length === 0 ? (
+                  <div className="empty-state">
+                    配置完成后点击"生成并保存"
+                  </div>
+                ) : (
+                  curls.map((item, index) => (
+                    <div key={index} className="curl-section">
+                      <div className="curl-header">
+                        <span className="curl-model">{item.model}</span>
+                        <button
+                          className="copy-btn"
+                          data-index={index}
+                          onClick={() => copyToClipboard(item.curl, index)}
+                        >
+                          复制
+                        </button>
+                      </div>
+                      <div className="curl-body">
+                        <pre className="curl-code">{item.curl}</pre>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className={`modal ${showModal ? 'active' : ''}`} onClick={() => setShowModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <span className="modal-title">配置管理</span>
+                <button className="btn" onClick={() => setShowModal(false)}>关闭</button>
+              </div>
+              <div className="modal-body">
+                {configs.length === 0 ? (
+                  <div className="empty-state">暂无配置</div>
+                ) : (
+                  <div className="config-list">
+                    {configs.map(config => (
+                      <div key={config.id} className="config-item">
+                        <div className="config-info">
+                          <div className="config-name">{config.name}</div>
+                          <div className="config-url">{config.url}</div>
+                        </div>
+                        <div className="config-actions">
+                          <button className="icon-btn" onClick={() => loadConfig(config)}>加载</button>
+                          <button className="icon-btn" onClick={() => deleteConfig(config.id)}>删除</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
