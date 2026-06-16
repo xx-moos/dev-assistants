@@ -1,9 +1,42 @@
-import { useReactive, useMemoizedFn } from "ahooks";
+import { useReactive, useMemoizedFn, useRequest } from "ahooks";
 import { Input, Checkbox, Radio, Modal, Button, message } from "antd";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import styles from "./index.module.less";
 
-// Curl 单项子组件
+const MODEL_CONFIG_STORAGE_KEY = "model_configs";
+const FETCH_MODELS_FAILED = "FETCH_MODELS_FAILED";
+const CONFIG_MODAL_WIDTH = '80%';
+
+// 生成配置id
+const createConfigId = (url, token) => `${url}-${token}`;
+
+// 保存缓存
+const saveStoredConfigs = (configs) => {
+  localStorage.setItem(MODEL_CONFIG_STORAGE_KEY, JSON.stringify(configs));
+};
+
+// 请求模型
+const getModelList = async (url, token) => {
+  const response = await fetch(`${url}/v1/models`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  // 响应边界
+  if (!response.ok) {
+    throw new Error(FETCH_MODELS_FAILED);
+  }
+
+  const payload = await response.json();
+
+  // 格式边界
+  if (!Array.isArray(payload?.data)) {
+    return [];
+  }
+
+  return payload.data.map((modelItem) => modelItem.id).filter(Boolean);
+};
+
+// Curl项
 const CurlItem = ({ model, curl, onCopy }) => {
   return (
     <div className={styles.curlItem}>
@@ -18,9 +51,10 @@ const CurlItem = ({ model, curl, onCopy }) => {
   );
 };
 
-// 配置表单区域子组件
+// 配置表单
 const ConfigForm = ({
   state,
+  isFetching,
   onFetchModels,
   onAddModel,
   onToggleModel,
@@ -68,22 +102,26 @@ const ConfigForm = ({
           onClick={onFetchModels}
           className={styles.fetchBtn}
           size="large"
+          loading={isFetching}
         >
           拉取模型列表
         </Button>
         <Button
           type="primary"
+          className={styles.fetchBtn}
           onClick={() => {
             state.url = "";
             state.token = "";
             state.name = "";
             state.remark = "";
             state.models = [];
+            state.modelsBak = [];
             state.selectedModels = [];
+            state.curls = [];
           }}
           size="large"
         >
-          重置
+          重置全部
         </Button>
       </div>
       <div className={styles.addModelSection}>
@@ -137,8 +175,8 @@ const ConfigForm = ({
   );
 };
 
-// Curl 展示区域子组件
-const CurlDisplay = ({ state, onGenerate, onCopy, handleOpenModal }) => {
+// Curl展示
+const CurlDisplay = ({ state, onGenerate, onCopy }) => {
   return (
     <div className={styles.curlSection}>
       <Radio.Group
@@ -157,9 +195,6 @@ const CurlDisplay = ({ state, onGenerate, onCopy, handleOpenModal }) => {
       >
         生成并保存
       </Button>
-
-      <Button onClick={handleOpenModal}>管理</Button>
-
       <div className={styles.curlList}>
         {state.curls.length === 0 ? (
           <div className={styles.empty}>配置完成后点击"生成并保存"</div>
@@ -178,16 +213,133 @@ const CurlDisplay = ({ state, onGenerate, onCopy, handleOpenModal }) => {
   );
 };
 
-// 配置管理弹窗子组件
+// 配置行
+const ConfigRow = ({ config, onLoad, onDelete, onSave }) => {
+  const draft = useReactive({
+    name: config.name || "",
+    url: config.url || "",
+    token: config.token || "",
+    remark: config.remark || "",
+  });
+
+  // 同步草稿
+  useEffect(() => {
+    draft.name = config.name || "";
+    draft.url = config.url || "";
+    draft.token = config.token || "";
+    draft.remark = config.remark || "";
+  }, [config]);
+
+  // 修改名称
+  const changeName = useMemoizedFn((event) => {
+    draft.name = event.target.value;
+  });
+
+  // 修改地址
+  const changeUrl = useMemoizedFn((event) => {
+    draft.url = event.target.value;
+  });
+
+  // 修改地址
+  const changeToken = useMemoizedFn((event) => {
+    draft.token = event.target.value;
+  });
+
+  // 修改备注
+  const changeRemark = useMemoizedFn((event) => {
+    draft.remark = event.target.value;
+  });
+
+  // 保存行
+  const saveRow = useMemoizedFn(() => {
+    onSave(config.id, {
+      ...config,
+      name: draft.name,
+      url: draft.url,
+      remark: draft.remark,
+    });
+  });
+
+  // 加载行
+  const loadRow = useMemoizedFn(() => {
+    onLoad(config);
+  });
+
+  // 删除行
+  const deleteRow = useMemoizedFn(() => {
+    onDelete(config.id);
+  });
+
+  return (
+    <div className={styles.configItem}>
+      <Input
+        size="large"
+        value={draft.name}
+        onChange={changeName}
+        placeholder="Name"
+        aria-label="配置名称"
+      />
+      <Input
+        size="large"
+        value={draft.url}
+        onChange={changeUrl}
+        placeholder="URL"
+        aria-label="配置 URL"
+      />
+      <Input
+        size="large"
+        value={draft.token}
+        onChange={changeToken}
+        placeholder="Token"
+        aria-label="配置 Token"
+      />
+      <Input
+        size="large"
+        value={draft.remark}
+        onChange={changeRemark}
+        placeholder="备注"
+        aria-label="配置备注"
+      />
+      <div className={styles.configActions}>
+        <a onClick={loadRow}>
+          加载
+        </a>
+        <a onClick={saveRow}>
+          保存
+        </a>
+        <a onClick={deleteRow}>
+          删除
+        </a>
+      </div>
+    </div>
+  );
+};
+
+// 管理弹窗
 const ConfigModal = ({
   visible,
   configs,
   onClose,
   onLoad,
   onDelete,
+  onSave,
   onExport,
   onImport,
 }) => {
+
+  const fileInputRef = useRef(null);
+
+  // 渲染配置
+  const renderConfig = useMemoizedFn((config) => (
+    <ConfigRow
+      key={config.id}
+      config={config}
+      onLoad={onLoad}
+      onDelete={onDelete}
+      onSave={onSave}
+    />
+  ));
+
   return (
     <Modal
       open={visible}
@@ -195,15 +347,18 @@ const ConfigModal = ({
       footer={null}
       title="配置管理"
       className={styles.modal}
-      width={900}
+      width={CONFIG_MODAL_WIDTH}
     >
       <div className={styles.modalActions}>
         <Button onClick={onExport}>导出</Button>
         <label>
-          <Button>导入</Button>
+          <Button onClick={() => {
+            fileInputRef.current.click();
+          }}>导入</Button>
           <input
             type="file"
             accept=".json"
+            ref={fileInputRef}
             onChange={onImport}
             style={{ display: "none" }}
           />
@@ -213,49 +368,16 @@ const ConfigModal = ({
         {configs.length === 0 ? (
           <div className={styles.empty}>暂无配置</div>
         ) : (
-          configs.map((config) => (
-            <div key={config.id} className={styles.configItem}>
-              <div className={styles.configItemHeader}>
-                <div className={styles.configName}>{config.name}</div>
-                <div className={styles.configActions}>
-                  <Button size="small" onClick={() => onLoad(config)}>
-                    加载
-                  </Button>
-                  <Button
-                    size="small"
-                    danger
-                    onClick={() => onDelete(config.id)}
-                  >
-                    删除
-                  </Button>
-                </div>
-              </div>
-              <div className={styles.configInfo}>
-                <div className={styles.configField}>
-                  <div className={styles.configLabel}>URL</div>
-                  <div className={styles.configValue}>{config.url}</div>
-                </div>
-                <div className={styles.configField}>
-                  <div className={styles.configLabel}>Token</div>
-                  <div className={styles.configValue}>
-                    {config.token?.slice(0, 20)}...
-                  </div>
-                </div>
-                <div className={styles.configField}>
-                  <div className={styles.configLabel}>备注</div>
-                  <div className={styles.configValue}>
-                    {config.remark || "-"}
-                  </div>
-                </div>
-                <div className={styles.configField}>
-                  <div className={styles.configLabel}>模型数量</div>
-                  <div className={styles.configValue}>
-                    {config.models?.length || 0}
-                  </div>
-                </div>
-              </div>
+          <>
+            <div className={styles.configHeader}>
+              <span>Name</span>
+              <span>URL</span>
+              <span>TOKEN</span>
+              <span>备注</span>
+              <span>操作</span>
             </div>
-          ))
+            <div className={styles.configRows}>{configs.map(renderConfig)}</div>
+          </>
         )}
       </div>
     </Modal>
@@ -264,10 +386,10 @@ const ConfigModal = ({
 
 // 主组件
 const ModelConfigManager = () => {
-  // 本地状态管理
+  // 本地状态
   const state = useReactive({
-    url: "https://muyuan.do",
-    token: "sk-gCfqDzPmsRXjbIKCa1v86x5swTmzgmgf4LUq0t0SH1meP0oN",
+    url: "",
+    token: "",
     name: "",
     remark: "",
     models: [],
@@ -279,10 +401,16 @@ const ModelConfigManager = () => {
     configs: [],
     newModelName: "",
   });
+  const { runAsync: requestModels, loading: isFetching } = useRequest(
+    getModelList,
+    {
+      manual: true,
+    },
+  );
 
-  // 从 localStorage 加载配置列表
+  // 读取缓存
   useEffect(() => {
-    const saved = localStorage.getItem("model_configs");
+    const saved = localStorage.getItem(MODEL_CONFIG_STORAGE_KEY);
     if (saved) {
       state.configs = JSON.parse(saved);
     }
@@ -295,19 +423,16 @@ const ModelConfigManager = () => {
       return;
     }
     try {
-      const res = await fetch(`${state.url}/v1/models`, {
-        headers: { Authorization: `Bearer ${state.token}` },
-      });
-      const data = await res.json();
-      state.models = data.data?.map((m) => m.id) || [];
+      const modelList = await requestModels(state.url, state.token);
+      state.models = modelList;
       state.modelsBak = [...state.models];
       message.success("拉取成功");
-    } catch (err) {
+    } catch (error) {
       message.error("拉取失败");
     }
   });
 
-  // 手动添加模型
+  // 添加模型
   const handleAddModel = useMemoizedFn(() => {
     if (!state.newModelName) return;
     if (state.models.includes(state.newModelName)) {
@@ -319,7 +444,7 @@ const ModelConfigManager = () => {
     state.newModelName = "";
   });
 
-  // 切换模型选中状态
+  // 切换模型
   const handleToggleModel = useMemoizedFn((model) => {
     if (state.selectedModels.includes(model)) {
       state.selectedModels = state.selectedModels.filter((m) => m !== model);
@@ -333,7 +458,7 @@ const ModelConfigManager = () => {
     state.models = state.modelsBak;
   });
 
-  // 快捷筛选模型
+  // 筛选模型
   const handleFilterModels = useMemoizedFn((filter) => {
     const filtered = state.models.filter((m) =>
       m.toLowerCase().includes(filter.toLowerCase()),
@@ -344,9 +469,10 @@ const ModelConfigManager = () => {
   // 清空选择
   const handleClearAll = useMemoizedFn(() => {
     state.selectedModels = [];
+    state.models = [...state.modelsBak];
   });
 
-  // 生成 curl 模板
+  // 生成模板
   const generateCurlTemplate = useMemoizedFn((type, model) => {
     const templates = {
       chat: (model) => `curl -sS '${state.url}/v1/chat/completions' \\
@@ -395,10 +521,10 @@ const ModelConfigManager = () => {
     return templates[type](model);
   });
 
-  // 生成并保存配置
+  // 生成保存
   const handleGenerate = useMemoizedFn(() => {
-    if (!state.url || !state.token || !state.name) {
-      message.error("请填写完整的 URL、Token 和 Name");
+    if (!state.url || !state.token) {
+      message.error("请填写完整的 URL 和 Token");
       return;
     }
     if (state.selectedModels.length === 0) {
@@ -412,26 +538,25 @@ const ModelConfigManager = () => {
       curl: generateCurlTemplate(state.curlType, model),
     }));
 
-    // 保存到 localStorage
-    const id = btoa(state.url + state.token);
+    // 写入缓存
+    const id = createConfigId(state.url, state.token);
     const config = {
       id,
       url: state.url,
       token: state.token,
       name: state.name,
       remark: state.remark,
-      models: state.selectedModels,
     };
 
     const updated = state.configs.filter((c) => c.id !== id);
     updated.push(config);
     state.configs = updated;
-    localStorage.setItem("model_configs", JSON.stringify(updated));
+    saveStoredConfigs(updated);
 
     message.success("生成并保存成功");
   });
 
-  // 复制到剪贴板
+  // 复制文本
   const handleCopy = useMemoizedFn((text) => {
     navigator.clipboard.writeText(text);
     message.success("已复制");
@@ -458,10 +583,58 @@ const ModelConfigManager = () => {
     message.success("加载成功");
   });
 
+  // 保存配置
+  const handleSaveConfig = useMemoizedFn((configId, config) => {
+    const name = config.name.trim();
+    const url = config.url.trim();
+    const token = (config.token || "").trim();
+    const remark = config.remark.trim();
+    const hasBaseConfig = Boolean(url && name);
+    const hasToken = Boolean(token);
+
+    // 可见必填
+    if (!hasBaseConfig) {
+      message.error("请填写完整的 URL 和 Name");
+      return;
+    }
+
+    // 历史边界
+    if (!hasToken) {
+      message.error("当前配置缺少 Token，请重新生成");
+      return;
+    }
+
+    const savedConfig = {
+      ...config,
+      id: createConfigId(url, token),
+      name,
+      url,
+      token,
+      remark,
+    };
+    const hasSameConfig = state.configs.some(
+      (storedConfig) =>
+        storedConfig.id !== configId && storedConfig.id === savedConfig.id,
+    );
+
+    // 重复边界
+    if (hasSameConfig) {
+      message.error("相同 URL 和 Token 已存在");
+      return;
+    }
+
+    const configs = state.configs.map((storedConfig) =>
+      storedConfig.id === configId ? savedConfig : storedConfig,
+    );
+    state.configs = configs;
+    saveStoredConfigs(configs);
+    message.success("保存成功");
+  });
+
   // 删除配置
   const handleDeleteConfig = useMemoizedFn((id) => {
     state.configs = state.configs.filter((c) => c.id !== id);
-    localStorage.setItem("model_configs", JSON.stringify(state.configs));
+    saveStoredConfigs(state.configs);
     message.success("删除成功");
   });
 
@@ -488,7 +661,7 @@ const ModelConfigManager = () => {
       try {
         const imported = JSON.parse(e.target.result);
         state.configs = imported;
-        localStorage.setItem("model_configs", JSON.stringify(imported));
+        saveStoredConfigs(imported);
         message.success("导入成功");
       } catch (err) {
         message.error("导入失败，文件格式错误");
@@ -501,8 +674,13 @@ const ModelConfigManager = () => {
     <div className={styles.container}>
       <div className={styles.main}>
         <div className={styles.leftPanel}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 20 }}> ai curl</span>
+            <Button onClick={handleOpenModal}>管理</Button>
+          </div>
           <ConfigForm
             state={state}
+            isFetching={isFetching}
             onFetchModels={handleFetchModels}
             onAddModel={handleAddModel}
             onToggleModel={handleToggleModel}
@@ -516,7 +694,6 @@ const ModelConfigManager = () => {
             state={state}
             onGenerate={handleGenerate}
             onCopy={handleCopy}
-            handleOpenModal={handleOpenModal}
           />
         </div>
       </div>
@@ -526,6 +703,7 @@ const ModelConfigManager = () => {
         onClose={handleCloseModal}
         onLoad={handleLoadConfig}
         onDelete={handleDeleteConfig}
+        onSave={handleSaveConfig}
         onExport={handleExport}
         onImport={handleImport}
       />
