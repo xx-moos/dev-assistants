@@ -41,7 +41,7 @@ const CurlItem = ({ model, curl, onCopy }) => {
   return (
     <div className={styles.curlItem}>
       <div className={styles.curlHeader}>
-        <span className={styles.modelName}>{model}</span>
+        <span className={styles.modelName} onClick={() => onCopy(model)}>{model}</span>
         <Button size="small" onClick={() => onCopy(curl)}>
           复制
         </Button>
@@ -484,7 +484,7 @@ const ModelConfigManager = () => {
   "messages": [
     {
       "role": "user",
-      "content": "just say hi, nothing else"
+      "content": "用一句话回答我,0.9和0.11谁大?"
     }
   ]
 }'`,
@@ -492,10 +492,12 @@ const ModelConfigManager = () => {
       codex: (model) => `curl -sS '${state.url}/v1/responses' \\
   -X POST \\
   -H 'content-type: application/json' \\
+  -H 'Accept: application/json' \\
   -H 'authorization: Bearer ${state.token}' \\
+  -H 'User-Agent: internal-codex-gateway/1.0' \\
   --data-binary '{
   "model": "${model}",
-  "input": "just say hi, nothing else"
+  "input": "请返回一条简洁的服务可用性确认信息。"
 }'`,
 
       "claude-code": (model) => `curl -sS '${state.url}/v1/messages' \\
@@ -504,6 +506,8 @@ const ModelConfigManager = () => {
   -H 'x-api-key: ${state.token}' \\
   -H 'anthropic-version: 2023-06-01' \\
   -H 'anthropic-dangerous-direct-browser-access: true' \\
+  -H 'accept: application/json' \\
+  -H 'user-agent: internal-claude-code-gateway/1.0' \\
   --data-binary '{
   "model": "${model}",
   "max_tokens": 64,
@@ -513,7 +517,7 @@ const ModelConfigManager = () => {
   "messages": [
     {
       "role": "user",
-      "content": "just say hi, nothing else"
+      "content": "请返回一条简洁的服务可用性确认信息。"
     }
   ]
 }'`,

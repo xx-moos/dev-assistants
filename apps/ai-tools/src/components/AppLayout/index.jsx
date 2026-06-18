@@ -33,9 +33,6 @@ const AppLayout = () => {
     <Layout className={styles.layout}>
       <Header className={styles.header}>
         <div className={styles.headerInner}>
-          {/* <Space size={14} className={styles.brand}>
-            <span className={styles.logo}>AI</span>
-          </Space> */}
           <div></div>
           <Menu
             mode="horizontal"
